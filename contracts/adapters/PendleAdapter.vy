@@ -6,8 +6,8 @@
 """
 
 from vyper.interfaces import ERC20
-# import LPAdapter as LPAdapter
-from interface import LPAdapter as LPAdapter
+# import IAdapter as IAdapter
+from IAdapter import IAdapter as IAdapter
 
 #gas optimization for swap things can be computed offchain
 struct ApproxParams:
@@ -123,7 +123,7 @@ interface PendlePtLpOracle:
     def getPtToAssetRate(market: address, duration: uint32) -> uint256: view
     def getOracleState(market: address, duration: uint32) -> (bool, uint16, bool): nonpayable
 
-implements: LPAdapter
+implements: IAdapter
 
 ONE: constant(uint256) = 10**18
 TWAP_DURATION: constant(uint32) = 1200

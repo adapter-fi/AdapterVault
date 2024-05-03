@@ -1,15 +1,15 @@
 #pragma version 0.3.10
 
 from vyper.interfaces import ERC20
-# import LPAdapter as LPAdapter
-from interface import LPAdapter as LPAdapter
+# import IAdapter as IAdapter
+from IAdapter import IAdapter as IAdapter
 
 interface mintableERC20:
     def mint(_receiver: address, _amount: uint256) -> uint256: nonpayable
     def burn(_value: uint256): nonpayable
     
 
-implements: LPAdapter
+implements: IAdapter
 
 aoriginalAsset: immutable(address)
 awrappedAsset: immutable(address)

@@ -8,7 +8,7 @@
 
 from vyper.interfaces import ERC20
 from vyper.interfaces import ERC4626
-from adapters.interface import LPAdapter as LPAdapter
+from adapters.IAdapter import IAdapter as IAdapter
 implements: ERC20
 # BDM HACK! We have some additional optional parameters that it doesn't like.
 # implements: ERC4626
@@ -314,13 +314,13 @@ def _add_adapter(_adapter: address) -> bool:
     # Do we already support this adapter?
     assert (_adapter in self.adapters) == False, "adapter already supported."
 
-    # Is this likely to be an actual LPAdapter contract?
+    # Is this likely to be an actual IAdapter contract?
     # BDM - for some reason this raw_call blows up the contract size!
     #response: Bytes[32] = empty(Bytes[32])
     #result_ok: bool = empty(bool)
 
     #result_ok, response = raw_call(_adapter, method_id("maxDeposit()"), max_outsize=32, is_static_call=True, revert_on_failure=False)
-    #assert (response != empty(Bytes[32])), "Doesn't appear to be an LPAdapter."
+    #assert (response != empty(Bytes[32])), "Doesn't appear to be an IAdapter."
 
     self.adapters.append(_adapter)
 
@@ -492,7 +492,7 @@ def _adapterAssets(_adapter: address) -> uint256:
     if result != 0:
         return result
 
-    result = LPAdapter(_adapter).totalAssets()
+    result = IAdapter(_adapter).totalAssets()
     self.adapters_asset_balance_cache[_adapter] = result
     return result
 
@@ -516,7 +516,7 @@ def try_total_assets() -> uint256:
 def _totalAssetsNoCache() -> uint256:
     assetqty : uint256 = ERC20(asset).balanceOf(self)
     for adapter in self.adapters:
-        assetqty += LPAdapter(adapter).totalAssets()
+        assetqty += IAdapter(adapter).totalAssets()
 
     return assetqty
 
@@ -927,7 +927,7 @@ def _getAdapterMaxWithdraw(_adapter: address) -> int256:
     """
     # If the value is higher than what can be represented by an int256 
     # make it the maximum value possible with an int256.
-    _umax : uint256 = LPAdapter(_adapter).maxWithdraw()
+    _umax : uint256 = IAdapter(_adapter).maxWithdraw()
     if _umax > convert(max_value(int256), uint256):
         _umax = convert(max_value(int256), uint256)
 
@@ -943,7 +943,7 @@ def _getAdapterMaxDeposit(_adapter: address) -> int256:
     """
     # If the value is higher than what can be represented by an int256 
     # make it the maximum value possible with an int256.
-    _umax : uint256 = LPAdapter(_adapter).maxDeposit()
+    _umax : uint256 = IAdapter(_adapter).maxDeposit()
     if _umax > convert(max_value(int256), uint256):
         return max_value(int256)
 
