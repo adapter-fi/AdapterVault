@@ -1,0 +1,41 @@
+name: dynamo_vault
+
+plugins:
+  - name: vyper
+  - name: alchemy
+
+default_ecosystem: ethereum
+
+ethereum:
+  goerli:
+    default_provider: geth
+  mainnet:
+    default_provider: geth
+
+
+geth:
+  ethereum:
+    goerli:
+      uri: https://rpc.ankr.com/eth_goerli
+    mainnet:
+      uri: https://rpc.ankr.com/eth
+
+hardhat:
+  fork:
+    ethereum:
+      mainnet:
+        upstream_provider: alchemy
+        block_number: 17024800
+  fork_request_timeout: 1200
+
+test:
+  mnemonic: test test test test test test test test test test test junk
+  number_of_accounts: 10
+  coverage:
+    reports:
+      terminal: False
+      html: True
+
+vyper:
+  version: 0.3.10
+  evm_version: cancun

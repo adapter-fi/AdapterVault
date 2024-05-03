@@ -1,0 +1,7 @@
+#These are unfrozen requirements to bootstrap the env
+git+https://github.com/BiggestLab/ape.git@v0.7.18-fork
+ape-alchemy
+ape-hardhat
+ape-vyper
+ape-hardhat
+terminaltables

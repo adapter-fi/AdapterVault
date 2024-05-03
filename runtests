@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+
+ape test --network :mainnet-fork:hardhat $1 $2 $3 $4
+

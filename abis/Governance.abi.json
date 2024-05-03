@@ -1,0 +1,952 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "Nonce",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "StrategyWithdrawal",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "Nonce",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "vault",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "GuardAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Endorse",
+        "type": "bool"
+      }
+    ],
+    "name": "StrategyVote",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "GuardAddress",
+        "type": "address"
+      }
+    ],
+    "name": "NewGuard",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "GuardAddress",
+        "type": "address"
+      }
+    ],
+    "name": "GuardRemoved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "OldGuardAddress",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "NewGuardAddress",
+        "type": "address"
+      }
+    ],
+    "name": "GuardSwap",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "Voter",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "NewGovernance",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "VoteCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "TotalGuards",
+        "type": "uint256"
+      }
+    ],
+    "name": "GovernanceContractChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NewGovernance",
+        "type": "address"
+      }
+    ],
+    "name": "VoteForNewGovernance",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "NewVault",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "VaultRemoved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "OldVaultAddress",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "NewVaultAddress",
+        "type": "address"
+      }
+    ],
+    "name": "VaultSwap",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "new_owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "old_owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnerChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          {
+            "name": "Nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "ProposerAddress",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "name": "adapter",
+                "type": "address"
+              },
+              {
+                "name": "ratio",
+                "type": "uint256"
+              }
+            ],
+            "name": "LPRatios",
+            "type": "tuple[5]"
+          },
+          {
+            "name": "min_proposer_payout",
+            "type": "uint256"
+          },
+          {
+            "name": "APYNow",
+            "type": "uint256"
+          },
+          {
+            "name": "APYPredicted",
+            "type": "uint256"
+          },
+          {
+            "name": "TSubmitted",
+            "type": "uint256"
+          },
+          {
+            "name": "TActivated",
+            "type": "uint256"
+          },
+          {
+            "name": "Withdrawn",
+            "type": "bool"
+          },
+          {
+            "name": "no_guards",
+            "type": "uint256"
+          },
+          {
+            "name": "VotesEndorse",
+            "type": "address[]"
+          },
+          {
+            "name": "VotesReject",
+            "type": "address[]"
+          },
+          {
+            "name": "VaultAddress",
+            "type": "address"
+          }
+        ],
+        "indexed": false,
+        "name": "strategy",
+        "type": "tuple"
+      },
+      {
+        "indexed": false,
+        "name": "ProposerAddress",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "name": "adapter",
+            "type": "address"
+          },
+          {
+            "name": "ratio",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "name": "LPRatios",
+        "type": "tuple[5]"
+      },
+      {
+        "indexed": false,
+        "name": "min_proposer_payout",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "StrategyProposal",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          {
+            "name": "Nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "ProposerAddress",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "name": "adapter",
+                "type": "address"
+              },
+              {
+                "name": "ratio",
+                "type": "uint256"
+              }
+            ],
+            "name": "LPRatios",
+            "type": "tuple[5]"
+          },
+          {
+            "name": "min_proposer_payout",
+            "type": "uint256"
+          },
+          {
+            "name": "APYNow",
+            "type": "uint256"
+          },
+          {
+            "name": "APYPredicted",
+            "type": "uint256"
+          },
+          {
+            "name": "TSubmitted",
+            "type": "uint256"
+          },
+          {
+            "name": "TActivated",
+            "type": "uint256"
+          },
+          {
+            "name": "Withdrawn",
+            "type": "bool"
+          },
+          {
+            "name": "no_guards",
+            "type": "uint256"
+          },
+          {
+            "name": "VotesEndorse",
+            "type": "address[]"
+          },
+          {
+            "name": "VotesReject",
+            "type": "address[]"
+          },
+          {
+            "name": "VaultAddress",
+            "type": "address"
+          }
+        ],
+        "indexed": false,
+        "name": "strategy",
+        "type": "tuple"
+      },
+      {
+        "indexed": false,
+        "name": "ProposerAddress",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "name": "adapter",
+            "type": "address"
+          },
+          {
+            "name": "ratio",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "name": "LPRatios",
+        "type": "tuple[5]"
+      },
+      {
+        "indexed": false,
+        "name": "min_proposer_payout",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "StrategyActivation",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "name": "contractOwner",
+        "type": "address"
+      },
+      {
+        "name": "_tdelay",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "name": "adapter",
+                "type": "address"
+              },
+              {
+                "name": "ratio",
+                "type": "uint256"
+              }
+            ],
+            "name": "LPRatios",
+            "type": "tuple[5]"
+          },
+          {
+            "name": "min_proposer_payout",
+            "type": "uint256"
+          },
+          {
+            "name": "APYNow",
+            "type": "uint256"
+          },
+          {
+            "name": "APYPredicted",
+            "type": "uint256"
+          }
+        ],
+        "name": "strategy",
+        "type": "tuple"
+      },
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "submitStrategy",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "Nonce",
+        "type": "uint256"
+      },
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "withdrawStrategy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "Nonce",
+        "type": "uint256"
+      },
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "endorseStrategy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "Nonce",
+        "type": "uint256"
+      },
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "rejectStrategy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "Nonce",
+        "type": "uint256"
+      },
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "activateStrategy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "GuardAddress",
+        "type": "address"
+      }
+    ],
+    "name": "addGuard",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "GuardAddress",
+        "type": "address"
+      }
+    ],
+    "name": "removeGuard",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "OldGuardAddress",
+        "type": "address"
+      },
+      {
+        "name": "NewGuardAddress",
+        "type": "address"
+      }
+    ],
+    "name": "swapGuard",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "guards",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "GuardAddress",
+        "type": "address"
+      }
+    ],
+    "name": "checkGuard",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "VaultAddress",
+        "type": "address"
+      }
+    ],
+    "name": "checkVault",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "NewGovernance",
+        "type": "address"
+      },
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "replaceGovernance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "addVault",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "removeVault",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "OldVaultAddress",
+        "type": "address"
+      },
+      {
+        "name": "NewVaultAddress",
+        "type": "address"
+      }
+    ],
+    "name": "swapVault",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_new_owner",
+        "type": "address"
+      }
+    ],
+    "name": "replaceOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "contractOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      }
+    ],
+    "name": "LGov",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "TDelay",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "no_guards",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "CurrentStrategyByVault",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "Nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "ProposerAddress",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "name": "adapter",
+                "type": "address"
+              },
+              {
+                "name": "ratio",
+                "type": "uint256"
+              }
+            ],
+            "name": "LPRatios",
+            "type": "tuple[5]"
+          },
+          {
+            "name": "min_proposer_payout",
+            "type": "uint256"
+          },
+          {
+            "name": "APYNow",
+            "type": "uint256"
+          },
+          {
+            "name": "APYPredicted",
+            "type": "uint256"
+          },
+          {
+            "name": "TSubmitted",
+            "type": "uint256"
+          },
+          {
+            "name": "TActivated",
+            "type": "uint256"
+          },
+          {
+            "name": "Withdrawn",
+            "type": "bool"
+          },
+          {
+            "name": "no_guards",
+            "type": "uint256"
+          },
+          {
+            "name": "VotesEndorse",
+            "type": "address[]"
+          },
+          {
+            "name": "VotesReject",
+            "type": "address[]"
+          },
+          {
+            "name": "VaultAddress",
+            "type": "address"
+          }
+        ],
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "PendingStrategyByVault",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "Nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "ProposerAddress",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "name": "adapter",
+                "type": "address"
+              },
+              {
+                "name": "ratio",
+                "type": "uint256"
+              }
+            ],
+            "name": "LPRatios",
+            "type": "tuple[5]"
+          },
+          {
+            "name": "min_proposer_payout",
+            "type": "uint256"
+          },
+          {
+            "name": "APYNow",
+            "type": "uint256"
+          },
+          {
+            "name": "APYPredicted",
+            "type": "uint256"
+          },
+          {
+            "name": "TSubmitted",
+            "type": "uint256"
+          },
+          {
+            "name": "TActivated",
+            "type": "uint256"
+          },
+          {
+            "name": "Withdrawn",
+            "type": "bool"
+          },
+          {
+            "name": "no_guards",
+            "type": "uint256"
+          },
+          {
+            "name": "VotesEndorse",
+            "type": "address[]"
+          },
+          {
+            "name": "VotesReject",
+            "type": "address[]"
+          },
+          {
+            "name": "VaultAddress",
+            "type": "address"
+          }
+        ],
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      },
+      {
+        "name": "arg1",
+        "type": "address"
+      }
+    ],
+    "name": "VotesGCByVault",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "NextNonceByVault",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      }
+    ],
+    "name": "VaultList",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

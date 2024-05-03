@@ -1,0 +1,1 @@
+./runtests tests/test_Governance.py::test_strategyDemo -s --prompt=True

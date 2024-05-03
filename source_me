@@ -1,0 +1,16 @@
+#
+# To pre-launch your snapshot of Ethereum main net using hardhat update the environment variable
+# for your Alchemy API below then run: `source source_me` in your shell. 
+#
+
+export WEB3_ETHEREUM_MAINNET_ALCHEMY_API_KEY=<PUT YOUR ALCHEMY API KEY HERE!!export WEB3_ALCHEMY_API_KEY=<PUT YOUR ALCHEMY API KEY HERE!!!>
+
+nvm install 16.16.0
+
+if [[ "$1" = "start" ]]
+then
+    echo Starting hardhat from Ethereum main net block 17024800.
+    npx hardhat   node   --fork https://eth-mainnet.alchemyapi.io/v2/$WEB3_ETHEREUM_MAINNET_ALCHEMY_API_KEY --fork-block-number 17024800 | tee rpc_output.txt &
+fi
+
+

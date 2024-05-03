@@ -1,0 +1,2 @@
+cp ../source_me .
+git update-index --assume-unchanged source_me
