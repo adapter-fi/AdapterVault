@@ -97,7 +97,7 @@ def adapter_adapterA(project, deployer, dai):
 
 @pytest.fixture
 def AdapterVault(project, deployer, dai, trader, funds_alloc):
-    v = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, dai, [], deployer, funds_alloc)    
+    v = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, dai, [], deployer, funds_alloc, "2.0")    
     return v
 
 #Setup the most minimalist vault...

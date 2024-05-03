@@ -63,7 +63,7 @@ def vault_contract_one(governance_contract, owner, project, accounts, dai, funds
 
     owner, operator, someoneelse, someone, newcontract, currentvault, currentgovernance = accounts[:7]
 
-    vcontractone = owner.deploy(project.AdapterVault, "TestVault Token", "TEST", 18, dai, [], governance_contract, funds_alloc)
+    vcontractone = owner.deploy(project.AdapterVault, "TestVault Token", "TEST", 18, dai, [], governance_contract, funds_alloc, "2.0")
 
     return vcontractone
 

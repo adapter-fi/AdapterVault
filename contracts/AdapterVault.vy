@@ -21,7 +21,7 @@ interface FundsAllocator:
 MAX_ADAPTERS : constant(uint256) = 5
 MAX_BALTX_DEPOSIT : constant(uint8) = 5 # MUST equal MAX_ADAPTERS for now. Ignored for now.
 
-MAX_SLIPPAGE_PERCENT : constant(decimal) = 2.00
+MAX_SLIPPAGE_PERCENT : immutable(decimal)
 
 # Contract owner hold 10% of the yield.
 YIELD_FEE_PERCENTAGE : constant(uint256) = 10
@@ -156,7 +156,7 @@ event OwnerChanged:
 
 
 @external
-def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20asset : address, _adapters: DynArray[address, MAX_ADAPTERS], _governance: address, _funds_allocator: address):
+def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20asset : address, _adapters: DynArray[address, MAX_ADAPTERS], _governance: address, _funds_allocator: address, _max_slippage_percent: decimal):
     """
     @notice Constructor for 4626 contract.
     @param _name of shares token
@@ -170,6 +170,7 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     assert MAX_BALTX_DEPOSIT <= MAX_ADAPTERS, "Invalid contract pre-conditions."
     assert _governance != empty(address), "Governance cannot be null address."
     assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
+    MAX_SLIPPAGE_PERCENT = _max_slippage_percent
 
     name = _name
     symbol = _symbol

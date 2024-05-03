@@ -58,7 +58,7 @@ def funds_alloc(project, deployer):
 
 @pytest.fixture
 def adaptervault(project, deployer, dai, trader, funds_alloc):
-    v = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, dai, [], deployer, funds_alloc)    
+    v = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, dai, [], deployer, funds_alloc, "2.0")
     return v
 
 
@@ -82,7 +82,7 @@ def test_basic_initialization(project, deployer, adaptervault):
 
 def test_initial_adapters_initialization(project, deployer, dai, adapter_adapterA, adapter_adapterB, adapter_adapterC, funds_alloc):
     adapters = [adapter_adapterA, adapter_adapterB, adapter_adapterC]
-    adapter_vault = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, dai, adapters, deployer, funds_alloc)    
+    adapter_vault = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, dai, adapters, deployer, funds_alloc, "2.0")    
 
     # This should fail because we can't add the same adapter twice!
     for adapter in adapters:

@@ -118,7 +118,7 @@ def funds_alloc(project, deployer, hardhat_fork_block):
 
 @pytest.fixture
 def adaptervault(project, deployer, steth, trader, funds_alloc, hardhat_fork_block):
-    v = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, steth, [], deployer, funds_alloc)
+    v = deployer.deploy(project.AdapterVault, d4626_name, d4626_token, d4626_decimals, steth, [], deployer, funds_alloc, "2.0")
     return v
 
 def test_pendle_adapter(project, pendle_adapter, pt, steth, pendleRouter, trader, deployer, adaptervault, pendleOracle):
