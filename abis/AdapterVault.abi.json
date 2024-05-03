@@ -371,6 +371,10 @@
       {
         "name": "_funds_allocator",
         "type": "address"
+      },
+      {
+        "name": "_max_slippage_percent",
+        "type": "fixed168x10"
       }
     ],
     "stateMutability": "nonpayable",
