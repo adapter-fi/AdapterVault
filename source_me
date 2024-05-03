@@ -5,7 +5,7 @@
 
 export WEB3_ETHEREUM_MAINNET_ALCHEMY_API_KEY=<PUT YOUR ALCHEMY API KEY HERE!!export WEB3_ALCHEMY_API_KEY=<PUT YOUR ALCHEMY API KEY HERE!!!>
 
-nvm install 16.16.0
+nvm install 20.12.2
 
 if [[ "$1" = "start" ]]
 then
