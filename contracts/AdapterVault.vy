@@ -166,6 +166,7 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     @param _adapters : list of addresses for initial Adapters (could be none) 
     @param _governance contract address
     @param _funds_allocator contract address
+    @param _max_slippage_percent default maximum acceptable slippage for deposits/withdraws as a percentage
     """
     assert MAX_BALTX_DEPOSIT <= MAX_ADAPTERS, "Invalid contract pre-conditions."
     assert _governance != empty(address), "Governance cannot be null address."
