@@ -5,3 +5,4 @@ ape-hardhat
 ape-vyper
 ape-hardhat
 terminaltables
+titanoboa
