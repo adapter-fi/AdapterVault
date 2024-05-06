@@ -3,6 +3,9 @@ import pytest
 import boa
 import json
 from boa.environment import Env
+from web3 import Web3
+import eth_abi
+
 
 from tests_boa.conftest import forked_env_mainnet
 
@@ -41,10 +44,64 @@ def steth(setup_chain, trader):
     with open("contracts/vendor/IERC20.json") as f:
         j = json.load(f)
     factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
-    steth = factory.at(STETH)
-    #Trader needs to aquire some ETH, dunno how
-    print(steth.balanceOf(trader))
-    print(boa.env.get_balance(trader))
+    st = factory.at(STETH)
+    #Trader needs to acquire some ETH, dunno how
+    abi_encoded = eth_abi.encode(['address', 'uint256'], [trader, 0])
+    storage_slot = Web3.solidity_keccak(["bytes"], ["0x" + abi_encoded.hex()])
 
-def test_foo(steth):
+    boa.env.evm.vm.state.set_storage(
+        boa.util.abi.Address(STETH).canonical_address,
+        Web3.to_int(storage_slot),
+        5000 * 10**18
+    )
+    print(st.balanceOf(trader))
+    print(boa.env.get_balance(trader))
+    assert st.balanceOf(trader) > 5000 * 10**18, "Trader did not get 'airdrop'"
+    return st
+
+@pytest.fixture
+def pt(setup_chain):
+    with open("contracts/vendor/IERC20.json") as f:
+        j = json.load(f)
+    factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
+    return factory.at(PENDLE_PT)
+
+@pytest.fixture
+def pendleRouter(setup_chain):
+    with open("contracts/vendor/IPAllActionV3.json") as f:
+        j = json.load(f)
+    factory = boa.loads_abi(json.dumps(j["abi"]), name="IPAllActionV3")
+    return factory.at(PENDLE_ROUTER)
+
+@pytest.fixture
+def pendleMarket(setup_chain):
+    with open("contracts/vendor/IPMarketV3.json") as f:
+        j = json.load(f)
+    factory = boa.loads_abi(json.dumps(j["abi"]), name="IPMarketV3")
+    return factory.at(PENDLE_MARKET)
+
+@pytest.fixture
+def pendleOracle(setup_chain, pendleMarket):
+    with open("contracts/vendor/PendlePtLpOracle.json") as f:
+        j = json.load(f)
+    factory = boa.loads_abi(json.dumps(j["abi"]), name="PendlePtLpOracle")
+    oracle = factory.at(PENDLE_ORACLE)
+    increaseCardinalityRequired, cardinalityRequired, oldestObservationSatisfied = oracle.getOracleState(PENDLE_MARKET, 1200)
+    if increaseCardinalityRequired:
+        pendleMarket.increaseObservationsCardinalityNext(cardinalityRequired)
+        print("cardinality increased")
+    #just in case, simulate passage of time
+    boa.env.time_travel(seconds=1200)
+    increaseCardinalityRequired, cardinalityRequired, oldestObservationSatisfied = oracle.getOracleState(PENDLE_MARKET, 1200)
+    print(increaseCardinalityRequired, cardinalityRequired, oldestObservationSatisfied)
+    assert increaseCardinalityRequired==False, "increaseCardinality failed"
+    assert oldestObservationSatisfied==True, "oldestObservation is not Satisfied"
+    return oracle
+
+@pytest.fixture
+def pendle_adapter(setup_chain, deployer, steth, pendleOracle):
+    pa = boa.load("contracts/adapters/PendleAdapter.vy", steth, PENDLE_ROUTER, PENDLE_ROUTER_STATIC, PENDLE_MARKET, PENDLE_ORACLE)
+    return pa
+
+def test_pendle_adapter_standalone(pendle_adapter, pt, steth, pendleRouter, trader, pendleOracle):
     pass
