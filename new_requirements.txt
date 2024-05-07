@@ -6,4 +6,7 @@ ape-vyper
 ape-hardhat
 terminaltables
 #re:https://github.com/vyperlang/titanoboa/issues/193
-git+https://github.com/vyperlang/titanoboa#egg=titanoboa[forking-recommended]
+#git+https://github.com/vyperlang/titanoboa#egg=titanoboa[forking-recommended]
+git+https://github.com/BiggestLab/titanoboa.git@cache_db#egg=titanoboa[forking-recommended]
+plyvel
+ujson

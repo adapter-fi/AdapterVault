@@ -69,6 +69,7 @@ parsimonious==0.10.0
 parso==0.8.4
 pexpect==4.9.0
 pluggy==1.5.0
+plyvel==1.5.1
 prompt-toolkit==3.0.43
 protobuf==5.26.1
 ptyprocess==0.7.0
@@ -110,7 +111,7 @@ sortedcontainers==2.4.0
 SQLAlchemy==2.0.29
 stack-data==0.6.3
 terminaltables==3.1.10
-titanoboa @ git+https://github.com/vyperlang/titanoboa@ea63c949531f55e0e83c993d916d24b1fc1acd40
+titanoboa @ git+https://github.com/BiggestLab/titanoboa.git@ff4839101eaead893849b01d8edce9be068a3302
 tomli==2.0.1
 toolz==0.12.1
 tqdm==4.66.2
