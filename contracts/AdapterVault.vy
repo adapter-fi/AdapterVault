@@ -381,6 +381,8 @@ def _remove_adapter(_adapter: address, pregen_info: DynArray[Bytes[4096], MAX_AD
         if adapter_assets > 0:
             assets_withdrawn : uint256 = self._adapter_withdraw(_adapter, adapter_assets, self, pregen_info, _force)
             if not _force:
+                # If force semantics was chosen it means the contract owner is willing to leave any assets
+                # behind in this adapter because it isn't behaving properly and we urgently need it gone.
                 assert self._adapterAssets(_adapter) == 0, "ERROR - adapter adapter to be removed still has assets!"
                 assert min_transfer_balance <= assets_withdrawn, "ERROR - too much slippage on adapter withdraw."
 
