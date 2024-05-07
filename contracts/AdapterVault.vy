@@ -660,8 +660,8 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
     # Good claim. Do we have the balance locally?
     if ERC20(asset).balanceOf(self) < claim_amount:
 
-        # Need to liquidate some shares to fulfill 
-        self._balanceAdapters(claim_amount, pregen_info)
+        # Need to liquidate some shares to fulfill. Insist on withdraw only semantics.
+        self._balanceAdapters(claim_amount, pregen_info, True)
 
     strat_fee_amount : uint256 = 0
     if _yield == FeeType.PROPOSER or _yield == FeeType.BOTH: 
@@ -1251,7 +1251,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
     self._mint(_receiver, transfer_shares)
 
     # Update all-time assets deposited for yield tracking.
-    self.total_assets_deposited += _asset_amount
+    self.total_assets_deposited += total_after_assets - total_starting_assets
 
     # OLD why was sender twice? - log Deposit(msg.sender, msg.sender, _asset_amount, transfer_shares)
     log Deposit(msg.sender, _receiver, _asset_amount, transfer_shares)
