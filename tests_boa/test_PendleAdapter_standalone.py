@@ -100,8 +100,82 @@ def pendleOracle(setup_chain, pendleMarket):
 
 @pytest.fixture
 def pendle_adapter(setup_chain, deployer, steth, pendleOracle):
-    pa = boa.load("contracts/adapters/PendleAdapter.vy", steth, PENDLE_ROUTER, PENDLE_ROUTER_STATIC, PENDLE_MARKET, PENDLE_ORACLE)
+    with boa.env.prank(deployer):
+        pa = boa.load("contracts/adapters/PendleAdapter.vy", steth, PENDLE_ROUTER, PENDLE_ROUTER_STATIC, PENDLE_MARKET, PENDLE_ORACLE)
     return pa
 
 def test_pendle_adapter_standalone(pendle_adapter, pt, steth, pendleRouter, trader, pendleOracle):
-    pass
+    with boa.env.prank(pendle_adapter.address):
+        assert pendle_adapter.totalAssets() == 0, "Asset balance should be 0"
+        assert pendle_adapter.maxWithdraw() == 0, "maxWithdraw should be 0"
+        assert pendle_adapter.maxDeposit() > 0, "maxDeposit should > 0"
+    assert pt.balanceOf(pendle_adapter) == 0, "PT balance incorrect"
+    with boa.env.prank(trader):
+        steth.approve(pendleRouter, 100*10**18)
+
+        ap = (
+            0, #guessMin
+            MAX_UINT256, #guessMax
+            0, #guessOffchain
+            256, #maxIteration
+            10**14 #eps
+        )
+        ti = (
+            STETH, #tokenIn
+            100*10**18, #netTokenIn
+            STETH, #tokenMintSy
+            "0x0000000000000000000000000000000000000000", #pendleSwap
+            (
+                0,
+                "0x0000000000000000000000000000000000000000",
+                b"",
+                False
+            ) #swapData
+        )
+        limit = (
+            "0x0000000000000000000000000000000000000000", #limitRouter
+            0, #epsSkipMarket
+            [], #normalFills
+            [], #flashFills
+            b"" #optData
+        )
+
+        pendleRouter.swapExactTokenForPt(trader, PENDLE_MARKET, 0, ap, ti, limit)
+    
+        pt_bal = pt.balanceOf(trader)
+        assert pt_bal > 100*10**18, "did not get enough PT"
+        print("pt_bal", pt_bal)
+        oracle_price = pendleOracle.getPtToAssetRate(PENDLE_MARKET, 900)
+        total_assets = pendle_adapter.totalAssets()
+
+        assert total_assets == (pt_bal * oracle_price) // 10**18, "total_assets incorrect"
+        assert total_assets < 100*10**18, "total_assets should be less than 100 stETH, due to slippage"
+        print(total_assets / 10**18)
+        assert pendle_adapter.maxWithdraw() == total_assets, "max withdraw must equal total assets"
+        assert pendle_adapter.maxDeposit() == MAX_UINT256, "max deposit should be unlimited"
+
+
+        boa.env.time_travel(seconds=60*60*24*30*9)
+        assert pendle_adapter.maxDeposit() == 0, "max deposit should be 0 post-maturity"
+        total_assets = pendle_adapter.totalAssets()
+        pt_bal = pt.balanceOf(trader)
+
+        assert total_assets == pt_bal, "PT should be pegged to asset post-maturity"
+        assert pendle_adapter.maxWithdraw() == total_assets, "max withdraw must equal total assets"
+
+
+def test_pendle_adapter_mint(project, pendle_adapter,  pt, steth, pendleRouter, trader):
+    with boa.env.prank(trader):
+        #Trader direct mint 1 stETH
+        steth.transfer(pendle_adapter, 1*10**18)
+        pendle_adapter.deposit(1*10**18, gas=3000000)
+        print("no pregen", pendle_adapter._computation.net_gas_used)
+
+        #Compute pregen
+        pregen_bytes = pendle_adapter.generate_pregen_info(10**18)
+        steth.transfer(pendle_adapter, 1*10**18)
+        pendle_adapter.deposit(1*10**18, pregen_bytes, gas=3000000)
+        print("pregen", pendle_adapter._computation.net_gas_used)
+
+
+
