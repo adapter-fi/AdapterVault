@@ -49,7 +49,7 @@ def steth(setup_chain, trader):
     abi_encoded = eth_abi.encode(['address', 'uint256'], [trader, 0])
     storage_slot = Web3.solidity_keccak(["bytes"], ["0x" + abi_encoded.hex()])
 
-    boa.env.evm.vm.state.set_storage(
+    boa.env.set_storage(
         boa.util.abi.Address(STETH).canonical_address,
         Web3.to_int(storage_slot),
         5000 * 10**18

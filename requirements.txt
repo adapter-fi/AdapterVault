@@ -111,7 +111,7 @@ sortedcontainers==2.4.0
 SQLAlchemy==2.0.29
 stack-data==0.6.3
 terminaltables==3.1.10
-titanoboa @ git+https://github.com/vyperlang/titanoboa@f84bad9cd437132dec9a1f2c3dc7f007bfb5fb43
+titanoboa @ git+https://github.com/vyperlang/titanoboa@4eaa59e6c4d884e6280e0d970e566044271942a6
 tomli==2.0.1
 toolz==0.12.1
 tqdm==4.66.2
