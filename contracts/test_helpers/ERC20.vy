@@ -1,4 +1,5 @@
 #pragma version 0.3.10
+#pragma evm-version cancun
 
 # @dev Implementation of ERC-20 token standard.
 # @author Takayuki Jimba (@yudetamago)

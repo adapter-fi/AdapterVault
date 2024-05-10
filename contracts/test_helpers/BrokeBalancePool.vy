@@ -1,4 +1,5 @@
 #pragma version 0.3.10
+#pragma evm-version cancun
 
 MAX_ADAPTERS : constant(int128) = 6
 

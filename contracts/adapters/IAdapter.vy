@@ -1,4 +1,5 @@
 #pragma version 0.3.10
+#pragma evm-version cancun
 """
 @title AdapterVault Adapter interface
 @license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
