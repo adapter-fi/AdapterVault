@@ -57,8 +57,8 @@ def ena(setup_chain, trader):
     #     print(boa.env.evm.vm.state.get_storage(boa.util.abi.Address(ENA).canonical_address, Web3.to_int(storage_slot)))
 
     # return
-    boa.env.evm.vm.state.set_storage(
-        boa.util.abi.Address(ENA).canonical_address,
+    boa.env.set_storage(
+        ENA,
         Web3.to_int(storage_slot),
         5000 * 10**18
     )
