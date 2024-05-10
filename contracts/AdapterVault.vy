@@ -1,5 +1,6 @@
 #pragma version 0.3.10
 #pragma optimize codesize
+#pragma evm-version cancun
 """
 @title Adapter.FI Multi-Vault
 @license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
