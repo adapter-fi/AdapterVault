@@ -183,7 +183,9 @@ def test_ena(setup_chain, ena, trader, adaptervault, pendle_adapter, deployer, p
         ena_bal_pre = ena.balanceOf(adaptervault)
         trader_bal_pre = ena.balanceOf(trader)
         assert adaptervault.balanceOf(trader) == adaptervault.convertToShares( adaptervault.convertToAssets(adaptervault.balanceOf(trader)))
-        
+        adaptervault.eval("self.vault_asset_balance_cache=0")
+        adaptervault.eval("self.total_asset_balance_cache=0")
+        adaptervault.eval("self.adapters_asset_balance_cache[" + pendle_adapter.address + "]=0")
         adaptervault.withdraw(
             adaptervault.convertToAssets(adaptervault.balanceOf(trader)),
             trader,
