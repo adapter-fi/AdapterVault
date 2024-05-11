@@ -479,8 +479,8 @@ def _dirtyAssetCache(_clearVaultBalance : bool = True, _clearAdapters : bool = T
     if _clearAdapters:        
         if _adapter == empty(address):
             # Clear them all
-            for cache in range(0, MAX_ADAPTERS):
-                self.adapters_asset_balance_cache[self.adapters[cache]] = 0
+            for adapter in self.adapters:
+                self.adapters_asset_balance_cache[adapter] = 0
         else:
             self.adapters_asset_balance_cache[_adapter] = 0
 
@@ -489,6 +489,8 @@ def _dirtyAssetCache(_clearVaultBalance : bool = True, _clearAdapters : bool = T
 def _vaultAssets() -> uint256:
     if self.vault_asset_balance_cache == 0:
         self.vault_asset_balance_cache = ERC20(asset).balanceOf(self)
+        if self.total_asset_balance_cache != 0:
+            self.total_asset_balance_cache = 0
     return self.vault_asset_balance_cache
 
 
@@ -503,14 +505,20 @@ def _adapterAssets(_adapter: address) -> uint256:
 
     result = IAdapter(_adapter).totalAssets()
     self.adapters_asset_balance_cache[_adapter] = result
+    if self.total_asset_balance_cache != 0:
+            self.total_asset_balance_cache = 0
     return result
 
 
 @internal
 def _totalAssetsCached() -> uint256:
+    if self.total_asset_balance_cache > 0:
+        return self.total_asset_balance_cache
     assetqty : uint256 = self._vaultAssets()
     for adapter in self.adapters:
         assetqty += self._adapterAssets(adapter)
+
+    self.total_asset_balance_cache = assetqty
 
     return assetqty
 
