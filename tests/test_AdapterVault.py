@@ -362,8 +362,8 @@ def test_single_getBalanceTxs(project, deployer, adaptervault, adapter_adapterA,
 
     print("adapters = %s." % [x for x in adapters])
 
-
     current_local_asset_balance = dai.balanceOf(adaptervault)
+
     adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = funds_alloc.getTargetBalances(current_local_asset_balance, 250, total_assets, total_ratios, adapters, 0)
     assert adapter_asset_allocation == 750
     assert d4626_delta == 250
