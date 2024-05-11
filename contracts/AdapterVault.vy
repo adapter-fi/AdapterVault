@@ -1300,8 +1300,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
     # Update all-time assets deposited for yield tracking.
     self.total_assets_deposited += total_after_assets - total_starting_assets
 
-    # OLD why was sender twice? - log Deposit(msg.sender, msg.sender, _asset_amount, transfer_shares)
-    log Deposit(msg.sender, _receiver, _asset_amount, transfer_shares)
+    log Deposit(msg.sender, _receiver, total_after_assets - total_starting_assets, transfer_shares)
 
     return transfer_shares
 
