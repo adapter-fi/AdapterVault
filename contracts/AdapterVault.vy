@@ -276,7 +276,6 @@ def _set_strategy(_proposer: address, _strategies : AdapterStrategy[MAX_ADAPTERS
         strat_fees : uint256 = 0
         yield_fees, strat_fees = self._claimable_fees_available(current_assets)
 
-        assert yield_fees != 10, "GOT TEN IN STRAT!"
         if strat_fees > self.min_proposer_payout:
                 
             # Pay prior proposer his earned fees.
@@ -625,7 +624,6 @@ def claimable_strategy_fees_available(_current_assets : uint256 = 0) -> uint256:
     yield_fees : uint256 = 0 
     strategy_fees: uint256 = 0
     yield_fees, strategy_fees = self._claimable_fees_available(_current_assets)  
-    # assert strategy_fees != 10, "GOT TEN IN CLAIMABLE!" # BDM
     return strategy_fees
 
 
@@ -668,8 +666,7 @@ def _claimable_fees_by_me(_yield : FeeType, _asset_amount: uint256, _current_ass
 
     # Only current proposer or governance may claim strategy fees.
     if _yield == FeeType.PROPOSER or _yield == FeeType.BOTH: 
-        if msg.sender != self.current_proposer or msg.sender != self.governance:
-            strat_fees = 0 
+        assert msg.sender == self.current_proposer or msg.sender == self.governance, "Only curent proposer or governance may claim strategy fees."
 
     # Do we have enough fees to pay out the request? If so how much should we extract?
     assert _asset_amount <= yield_fees + strat_fees, "Not enough fees to fulfill requested amount."
@@ -682,8 +679,6 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
     strat_fees : uint256 = 0
 
     yield_fees, strat_fees = self._claimable_fees_by_me(_yield, _asset_amount, _current_assets)
-
-    assert yield_fees != 10, "GOT TEN!" # BDM!
 
     fees_to_claim : uint256 = yield_fees + strat_fees
     if _asset_amount > 0:               # Otherwise we take it all.
