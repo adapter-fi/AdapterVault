@@ -310,7 +310,9 @@ def set_strategy(_proposer: address, _strategies : AdapterStrategy[MAX_ADAPTERS]
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return True if strategy was activated, False overwise
     """
-    return self._set_strategy(_proposer, _strategies, _min_proposer_payout, pregen_info)
+    applied: bool = self._set_strategy(_proposer, _strategies, _min_proposer_payout, pregen_info)
+    self._dirtyAssetCache()
+    return applied
 
 
 @internal 
@@ -490,8 +492,7 @@ def _dirtyAssetCache(_clearVaultBalance : bool = True, _clearAdapters : bool = T
 def _vaultAssets() -> uint256:
     if self.vault_asset_balance_cache == 0:
         self.vault_asset_balance_cache = ERC20(asset).balanceOf(self)
-        if self.total_asset_balance_cache != 0:
-            self.total_asset_balance_cache = 0
+        self.total_asset_balance_cache = 0
     return self.vault_asset_balance_cache
 
 
@@ -506,8 +507,7 @@ def _adapterAssets(_adapter: address) -> uint256:
 
     result = IAdapter(_adapter).totalAssets()
     self.adapters_asset_balance_cache[_adapter] = result
-    if self.total_asset_balance_cache != 0:
-            self.total_asset_balance_cache = 0
+    self.total_asset_balance_cache = 0
     return result
 
 
@@ -901,7 +901,9 @@ def mint(_share_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes
     @return Asset value of _share_amount
     """
     assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
-    return self._deposit(assetqty, _receiver, pregen_info)
+    minted: uint256 = self._deposit(assetqty, _receiver, pregen_info)
+    self._dirtyAssetCache()
+    return minted
 
 
 @external
@@ -961,7 +963,9 @@ def redeem(_share_amount: uint256, _receiver: address, _owner: address, pregen_i
     """
     assetqty: uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
     # NOTE - this is accepting the MAX_SLIPPAGE_PERCENT % slippage default.
-    return self._withdraw(assetqty, _receiver, _owner, pregen_info, 0)
+    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, pregen_info, 0)
+    self._dirtyAssetCache()
+    return withdrawn
 
 
 # This structure must match definition in Funds Allocator contract.
@@ -1053,38 +1057,44 @@ def getCurrentBalances() -> (uint256, BalanceAdapter[MAX_ADAPTERS], uint256, uin
     @notice This function returns current balances of adapters
     @return Current balances of adapters
     """
-    return self._getCurrentBalances()
+    current_local_asset_balance: uint256 = 0
+    adapter_balances: BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
+    total_balance: uint256 = 0
+    total_ratios: uint256 = 0
+    current_local_asset_balance, adapter_balances, total_balance, total_ratios = self._getCurrentBalances()
+    self._dirtyAssetCache()
+    return current_local_asset_balance, adapter_balances, total_balance, total_ratios
 
 
-@external
-@view
-def getTargetBalances(_d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
-    """
-    @dev    Returns: 
-            1) uint256 - the total asset allocation across all adapters (less _d4626_asset_target),
-            2) int256 - the total delta of local d4626 assets that would be moved across
-            all transactions, 
-            3) uint256 - the total number of planned txs to achieve these targets,
-            4) BalanceAdapter[MAX_ADAPTERS] - the updated list of transactions required to
-            meet the target goals sorted in ascending order of BalanceAdapter.delta.
-            5) A list of any adapters that should be blocked because they lost funds.
+# @external
+# @view
+# def getTargetBalances(_d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+#     """
+#     @dev    Returns: 
+#             1) uint256 - the total asset allocation across all adapters (less _d4626_asset_target),
+#             2) int256 - the total delta of local d4626 assets that would be moved across
+#             all transactions, 
+#             3) uint256 - the total number of planned txs to achieve these targets,
+#             4) BalanceAdapter[MAX_ADAPTERS] - the updated list of transactions required to
+#             meet the target goals sorted in ascending order of BalanceAdapter.delta.
+#             5) A list of any adapters that should be blocked because they lost funds.
 
-    @param  _d4626_asset_target minimum asset target goal to be made available
-            for withdraw from the 4626 contract.
+#     @param  _d4626_asset_target minimum asset target goal to be made available
+#             for withdraw from the 4626 contract.
 
-    @param  _total_assets the sum of all assets held by the d4626 plus all of
-            its adapter adapters.
+#     @param  _total_assets the sum of all assets held by the d4626 plus all of
+#             its adapter adapters.
 
-    @param _total_ratios the total of all BalanceAdapter.ratio values in _adapter_balances.
+#     @param _total_ratios the total of all BalanceAdapter.ratio values in _adapter_balances.
 
-    @param _adapter_balances current state of the adapter adapters. BDM TODO Specify TYPES!
+#     @param _adapter_balances current state of the adapter adapters. BDM TODO Specify TYPES!
 
-    @param _min_outgoing_tx the minimum size of a tx depositing funds to an adapter (as set by the current strategy).
+#     @param _min_outgoing_tx the minimum size of a tx depositing funds to an adapter (as set by the current strategy).
 
-    """    
-    current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
+#     """    
+#     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
 
-    return FundsAllocator(self.funds_allocator).getTargetBalances(current_local_asset_balance, _d4626_asset_target, _total_assets, _total_ratios, _adapter_balances, _min_outgoing_tx, _withdraw_only)
+#     return FundsAllocator(self.funds_allocator).getTargetBalances(current_local_asset_balance, _d4626_asset_target, _total_assets, _total_ratios, _adapter_balances, _min_outgoing_tx, _withdraw_only)
 
 
 @internal
@@ -1094,11 +1104,11 @@ def _getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_propose
     return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
 
 
-@external
-@view
-def getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
-    current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
-    return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+# @external
+# @view
+# def getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
+#     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
+#     return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
 
 
 @internal
@@ -1170,7 +1180,9 @@ def balanceAdapters(_target_asset_balance: uint256, _withdraw_only : bool = Fals
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     """
     assert msg.sender == self.owner, "only owner can call balanceAdapters"
-    return self._balanceAdapters(_target_asset_balance, pregen_info, _withdraw_only, _max_txs)
+    ret: uint256 = self._balanceAdapters(_target_asset_balance, pregen_info, _withdraw_only, _max_txs)
+    self._dirtyAssetCache()
+    return ret
 
 
 @internal
