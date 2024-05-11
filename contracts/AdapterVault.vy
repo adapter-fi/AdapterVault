@@ -1075,20 +1075,20 @@ def getTargetBalances(_d4626_asset_target: uint256, _total_assets: uint256, _tot
 
 @internal
 @view
-def _getBalanceTxs( _target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+def _getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
-    return FundsAllocator(self.funds_allocator).getBalanceTxs( current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+    return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
 
 
 @external
 @view
-def getBalanceTxs( _target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
+def getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
-    return FundsAllocator(self.funds_allocator).getBalanceTxs( current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+    return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
 
 
 @internal
-def _balanceAdapters( _target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT ) -> uint256:
+def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT ) -> uint256:
     # Make sure we have enough assets to send to _receiver.
     txs: BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters: address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
@@ -1147,7 +1147,7 @@ def _balanceAdapters( _target_asset_balance: uint256, pregen_info: DynArray[Byte
 
 
 @external
-def balanceAdapters( _target_asset_balance: uint256, _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
+def balanceAdapters(_target_asset_balance: uint256, _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
     """
     @notice The function provides a way to balance adapters
     @dev   returns the actual balances of assets held in the local vault after balancing.
@@ -1281,7 +1281,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
     # It's our intention to move all funds into the lending adapters so 
     # our target balance is zero.
-    self._balanceAdapters( empty(uint256), pregen_info)
+    self._balanceAdapters(empty(uint256), pregen_info)
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
@@ -1342,7 +1342,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, prege
     log Transfer(_owner, empty(address), shares)
 
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
-    self._balanceAdapters( _asset_amount, pregen_info, True )
+    self._balanceAdapters(_asset_amount, pregen_info, True )
 
     # Now account for possible slippage.
     current_balance : uint256 = ERC20(asset).balanceOf(self)
