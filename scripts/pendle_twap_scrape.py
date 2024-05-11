@@ -9,13 +9,16 @@ PENDLE_ROUTER_STATIC="0x263833d47eA3fA4a30f269323aba6a107f9eB14C"
 if "__main__" in __name__:
     w3 = Web3(Web3.HTTPProvider('https://eth-mainnet.g.alchemy.com/v2/' + os.getenv("WEB3_ALCHEMY_API_KEY")))
     assert w3.is_connected() == True, "web3 must be connected"
-
+    end = w3.eth.block_number
+    START = 17449767
+    INCREMENT=100000
     blocks = []
-    for log in w3.eth.get_logs({"address": MARKET, 'fromBlock': 0, 'toBlock': "latest"}):
-        if log.blockNumber not in blocks:
-            if log.blockNumber > 17449767:
-                # ^ this is block number from when router static got getPtToAssetRate function
-                blocks += [log.blockNumber]
+    for i in range(START, end, INCREMENT):
+        for log in w3.eth.get_logs({"address": MARKET, 'fromBlock': i, 'toBlock': i+INCREMENT}):
+            if log.blockNumber not in blocks:
+                if log.blockNumber > 17449767:
+                    # ^ this is block number from when router static got getPtToAssetRate function
+                    blocks += [log.blockNumber]
     blocks.sort()
     with open("contracts/vendor/IPRouterStatic.json") as f:
         abi = json.load(f)["abi"]

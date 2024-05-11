@@ -313,7 +313,7 @@ TARGET = 4
 DELTA = 5
 
 
-def test_single_getBalanceTxs(project, deployer, adaptervault, adapter_adapterA, dai, trader):
+def test_single_getBalanceTxs(project, deployer, adaptervault, adapter_adapterA, dai, trader, funds_alloc):
     print("**** test_single_getBalanceTxs ****")
     _setup_single_adapter(project,adaptervault, deployer, dai, adapter_adapterA)
 
@@ -332,7 +332,8 @@ def test_single_getBalanceTxs(project, deployer, adaptervault, adapter_adapterA,
     print("adapters = %s." % [x for x in adapters])
 
     total_assets = 1000
-    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = adaptervault.getTargetBalances(0, total_assets, total_ratios, adapters, 0)
+    current_local_asset_balance = dai.balanceOf(adaptervault)
+    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = adaptervault.getTargetBalances(current_local_asset_balance, 0, total_assets, total_ratios, adapters, 0)
     assert adapter_asset_allocation == 1000    
     assert d4626_delta == -1000
     assert tx_count == 1
@@ -361,7 +362,9 @@ def test_single_getBalanceTxs(project, deployer, adaptervault, adapter_adapterA,
 
     print("adapters = %s." % [x for x in adapters])
 
-    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = adaptervault.getTargetBalances(250, total_assets, total_ratios, adapters, 0)
+
+    current_local_asset_balance = dai.balanceOf(adaptervault)
+    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = funds_alloc.getTargetBalances(current_local_asset_balance, 250, total_assets, total_ratios, adapters, 0)
     assert adapter_asset_allocation == 750
     assert d4626_delta == 250
     assert tx_count == 1
