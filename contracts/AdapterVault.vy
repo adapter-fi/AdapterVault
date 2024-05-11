@@ -1088,7 +1088,7 @@ def getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer
 
 
 @internal
-def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT ) -> uint256:
+def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool, _max_txs: uint8 = MAX_BALTX_DEPOSIT ) -> uint256:
     # Make sure we have enough assets to send to _receiver.
     txs: BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters: address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
@@ -1281,7 +1281,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
     # It's our intention to move all funds into the lending adapters so 
     # our target balance is zero.
-    self._balanceAdapters(empty(uint256), pregen_info)
+    self._balanceAdapters(empty(uint256), pregen_info, False)
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
