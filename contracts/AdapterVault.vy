@@ -414,6 +414,7 @@ def remove_adapter(_adapter: address, _rebalance: bool = True, _force: bool = Fa
     @return True if adapter was removed, False otherwise
     """
     return self._remove_adapter(_adapter, pregen_info, _rebalance, _force, _min_assets)
+    
 
 
 @internal
@@ -748,7 +749,9 @@ def claim_yield_fees(_asset_request: uint256 = 0, pregen_info: DynArray[Bytes[40
     @return total assets transferred.    
     @dev If _asset_request is 0 then will withdrawl all eligible assets.
     """
-    return self._claim_fees(FeeType.YIELDS, _asset_request, pregen_info)
+    result : uint256 = self._claim_fees(FeeType.YIELDS, _asset_request, pregen_info)
+    self._dirtyAssetCache()
+    return result
 
 
 @external
@@ -760,7 +763,9 @@ def claim_strategy_fees(_asset_request: uint256 = 0, pregen_info: DynArray[Bytes
     @return total assets transferred.    
     @dev If _asset_request is 0 then will withdrawl all eligible assets.
     """
-    return self._claim_fees(FeeType.PROPOSER, _asset_request, pregen_info)
+    result : uint256 = self._claim_fees(FeeType.PROPOSER, _asset_request, pregen_info)
+    self._dirtyAssetCache()
+    return result
 
 
 @external
@@ -772,7 +777,9 @@ def claim_all_fees(_asset_request: uint256 = 0, pregen_info: DynArray[Bytes[4096
     @return total assets transferred.    
     @dev If _asset_request is 0 then will withdrawl all eligible assets.
     """
-    return self._claim_fees(FeeType.BOTH, _asset_request, pregen_info)
+    result : uint256 = self._claim_fees(FeeType.BOTH, _asset_request, pregen_info)
+    self._dirtyAssetCache()
+    return result
 
 
 @internal
@@ -1012,7 +1019,6 @@ def _getCurrentBalances() -> (uint256, BalanceAdapter[MAX_ADAPTERS], uint256, ui
     current_local_asset_balance : uint256 = self._vaultAssets()
 
     adapter_balances: BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
-
 
     # If there are no adapters then nothing to do.
     if len(self.adapters) == 0: return current_local_asset_balance, adapter_balances, current_local_asset_balance, 0
@@ -1323,7 +1329,10 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount deposited to receiver
     """
-    return self._deposit(_asset_amount, _receiver, pregen_info, _min_shares)
+    result : uint256 = self._deposit(_asset_amount, _receiver, pregen_info, _min_shares)
+    self._dirtyAssetCache()
+    return result
+
 
 
 @internal
@@ -1388,7 +1397,9 @@ def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_ass
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount withdrawn to receiver
     """
-    return self._withdraw(_asset_amount,_receiver,_owner, pregen_info, _min_assets)
+    result : uint256 = self._withdraw(_asset_amount,_receiver,_owner, pregen_info, _min_assets)
+    self._dirtyAssetCache()
+    return result
 
 
 ### ERC20 functionality.
