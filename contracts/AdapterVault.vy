@@ -709,12 +709,20 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
 
     # Do we have something independent for the strategy proposer?
     if strat_fees > 0 and self.owner != self.current_proposer:
-        ERC20(asset).transfer(self.current_proposer, strat_fees)
+        # We only pay out if the amount is high enough, otherwise the vault keeps it.
+        # Unless the person requesting the payout is the current proposer then he must
+        # want it anyway.
+        if msg.sender == self.current_proposer or strat_fees >= self.min_proposer_payout:
+            ERC20(asset).transfer(self.current_proposer, strat_fees)
         strat_fees = 0
 
     # Is there anything left over to transfer for Yield? (Which might also include strat)
     if yield_fees + strat_fees > 0:
         ERC20(asset).transfer(self.owner, yield_fees + strat_fees)    
+
+    # Update our global payout records.
+    self.total_yield_fees_claimed += yield_fees
+    self.total_strategy_fees_claimed += strat_fees
 
     # Clear vault asset cache!        
     self._dirtyAssetCache(True, False) 
