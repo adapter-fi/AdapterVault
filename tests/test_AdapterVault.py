@@ -333,7 +333,7 @@ def test_single_getBalanceTxs(project, deployer, adaptervault, adapter_adapterA,
 
     total_assets = 1000
     current_local_asset_balance = dai.balanceOf(adaptervault)
-    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = adaptervault.getTargetBalances(current_local_asset_balance, 0, total_assets, total_ratios, adapters, 0)
+    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = funds_alloc.getTargetBalances(current_local_asset_balance, 0, total_assets, total_ratios, adapters, 0)
     assert adapter_asset_allocation == 1000    
     assert d4626_delta == -1000
     assert tx_count == 1
@@ -376,7 +376,7 @@ def test_single_getBalanceTxs(project, deployer, adaptervault, adapter_adapterA,
     print("adapters = %s." % [x for x in adapters])
 
 
-def test_multiple_adapter_balanceAdapters(project, deployer, adaptervault, adapter_adapterA, adapter_adapterB, adapter_adapterC, dai, trader):
+def test_multiple_adapter_balanceAdapters(project, deployer, adaptervault, adapter_adapterA, adapter_adapterB, adapter_adapterC, dai, trader, funds_alloc):
     _setup_single_adapter(project,adaptervault, deployer, dai, adapter_adapterA)
 
     print("\nadapter setup complete.")
@@ -394,7 +394,8 @@ def test_multiple_adapter_balanceAdapters(project, deployer, adaptervault, adapt
     print("adapters = %s." % [x for x in adapters])
 
     total_assets = 1000
-    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = adaptervault.getTargetBalances(0, total_assets, total_ratios, adapters, 0)
+    current_local_asset_balance = dai.balanceOf(adaptervault)
+    adapter_asset_allocation, d4626_delta, tx_count, adapters, blocked_adapters = funds_alloc.getTargetBalances(current_local_asset_balance, 0, total_assets, total_ratios, adapters, 0)
     assert adapter_asset_allocation == 1000    
     assert d4626_delta == -1000
     assert tx_count == 1
@@ -546,7 +547,7 @@ def test_single_adapter_withdraw(project, deployer, adaptervault, adapter_adapte
     assert result.return_value == 250
 
 
-def test_single_adapter_share_value_increase(project, deployer, adaptervault, adapter_adapterA, dai, trader):
+def test_single_adapter_share_value_increase(project, deployer, adaptervault, adapter_adapterA, dai, trader, funds_alloc):
     _setup_single_adapter(project,adaptervault, deployer, dai, adapter_adapterA)
 
     assert dai.balanceOf(trader) == 1000000000 
@@ -608,7 +609,8 @@ def test_single_adapter_share_value_increase(project, deployer, adaptervault, ad
     # Setup current state of vault & adapters & strategy.
     cd4626_assets, cadapter_states, ctotal_assets, ctotal_ratios = adaptervault.getCurrentBalances(sender=trader).return_value
 
-    adapters = adaptervault.getBalanceTxs(max_withdrawl, 5, 0, ctotal_assets, ctotal_ratios, cadapter_states, sender=trader)   
+    current_local_asset_balance = dai.balanceOf(adaptervault)
+    adapters = funds_alloc.getBalanceTxs(current_local_asset_balance, max_withdrawl, 5, 0, ctotal_assets, ctotal_ratios, cadapter_states, sender=trader)   
 
     print("adapters = %s." % [x for x in adapters])
 
@@ -631,7 +633,7 @@ def test_single_adapter_share_value_increase(project, deployer, adaptervault, ad
     assert max_redeem == pytest.approx(0), "Still got %s shares left to redeem!" % max_redeem
 
 
-def test_single_adapter_brakes_target_balance_txs(project, deployer, adaptervault, adapter_adapterA, adapter_adapterB, adapter_adapterC, dai, trader):
+def test_single_adapter_brakes_target_balance_txs(project, deployer, adaptervault, adapter_adapterA, adapter_adapterB, adapter_adapterC, dai, trader, funds_alloc):
     _setup_single_adapter(project,adaptervault, deployer, dai, adapter_adapterA)
 
     # Trader needs to allow the 4626 contract to take funds.
@@ -658,7 +660,8 @@ def test_single_adapter_brakes_target_balance_txs(project, deployer, adaptervaul
     # Pretend to add another 1000.
     # The target for the first adapter's value should be the full amount.
     
-    next_assets, moved, tx_count, adapter_txs, blocked_adapters = adaptervault.getTargetBalances(0, 2000, 1, adapters, 0)    
+    current_local_asset_balance = dai.balanceOf(adaptervault)
+    next_assets, moved, tx_count, adapter_txs, blocked_adapters = funds_alloc.getTargetBalances(current_local_asset_balance, 0, 2000, 1, adapters, 0)    
 
     assert blocked_adapters[0] == ZERO_ADDRESS    
 
@@ -682,7 +685,8 @@ def test_single_adapter_brakes_target_balance_txs(project, deployer, adaptervaul
 
     # Pretend to add another 1000.
     # No tx should be generated for the adapter as the brakes are applied due to the loss.
-    next_assets, moved, tx_count, adapter_txs, blocked_adapters = adaptervault.getTargetBalances(0, 2000, 1, adapters, 0)
+    current_local_asset_balance = dai.balanceOf(adaptervault)
+    next_assets, moved, tx_count, adapter_txs, blocked_adapters = funds_alloc.getTargetBalances(current_local_asset_balance, 0, 2000, 1, adapters, 0)
 
     assert blocked_adapters[0] == adapter_adapterA    
 
@@ -707,8 +711,8 @@ def test_single_adapter_brakes_target_balance_txs(project, deployer, adaptervaul
     adapters[1].target = 0
     adapters[1].delta = 0
 
-
-    next_assets, moved, tx_count, adapter_txs, blocked_adapters = adaptervault.getTargetBalances(0, 2000, 1, adapters, 0)
+    current_local_asset_balance = dai.balanceOf(adaptervault)
+    next_assets, moved, tx_count, adapter_txs, blocked_adapters = funds_alloc.getTargetBalances(current_local_asset_balance, 0, 2000, 1, adapters, 0)
 
     # All the funds should be moved into adapter_adapterB.
 
