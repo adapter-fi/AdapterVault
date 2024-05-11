@@ -310,7 +310,9 @@ def set_strategy(_proposer: address, _strategies : AdapterStrategy[MAX_ADAPTERS]
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return True if strategy was activated, False overwise
     """
-    return self._set_strategy(_proposer, _strategies, _min_proposer_payout, pregen_info)
+    applied: bool = self._set_strategy(_proposer, _strategies, _min_proposer_payout, pregen_info)
+    self._dirtyAssetCache()
+    return applied
 
 
 @internal 
