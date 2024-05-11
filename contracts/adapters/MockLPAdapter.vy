@@ -1,4 +1,5 @@
 #pragma version 0.3.10
+#pragma evm-version cancun
 
 from vyper.interfaces import ERC20
 # import IAdapter as IAdapter
