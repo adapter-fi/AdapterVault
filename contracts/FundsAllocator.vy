@@ -12,7 +12,7 @@
 
 MAX_ADAPTERS : constant(uint256) = 5 
 
-ADAPTER_BREAKS_LOSS_POINT : constant(decimal) = 0.00001
+ADAPTER_BREAKS_LOSS_POINT : constant(decimal) = 0.05
 
 
 # This structure must match definition in AdapterVault.vy
