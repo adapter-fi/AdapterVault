@@ -269,12 +269,14 @@ def _set_strategy(_proposer: address, _strategies : AdapterStrategy[MAX_ADAPTERS
     # Are we replacing the old proposer?
     if self.current_proposer != _proposer:
 
-        current_assets : uint256 = self._totalAssetsCached()
+        current_assets : uint256 = self._totalAssetsNoCache() # self._totalAssetsCached()
 
         # Is there enough payout to actually do a transaction?
         yield_fees : uint256 = 0
         strat_fees : uint256 = 0
         yield_fees, strat_fees = self._claimable_fees_available(current_assets)
+
+        assert yield_fees != 10, "GOT TEN IN STRAT!"
         if strat_fees > self.min_proposer_payout:
                 
             # Pay prior proposer his earned fees.
@@ -623,6 +625,7 @@ def claimable_strategy_fees_available(_current_assets : uint256 = 0) -> uint256:
     yield_fees : uint256 = 0 
     strategy_fees: uint256 = 0
     yield_fees, strategy_fees = self._claimable_fees_available(_current_assets)  
+    # assert strategy_fees != 10, "GOT TEN IN CLAIMABLE!" # BDM
     return strategy_fees
 
 
@@ -679,6 +682,8 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
     strat_fees : uint256 = 0
 
     yield_fees, strat_fees = self._claimable_fees_by_me(_yield, _asset_amount, _current_assets)
+
+    assert yield_fees != 10, "GOT TEN!" # BDM!
 
     fees_to_claim : uint256 = yield_fees + strat_fees
     if _asset_amount > 0:               # Otherwise we take it all.
