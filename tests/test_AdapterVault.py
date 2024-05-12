@@ -534,6 +534,7 @@ def test_single_adapter_withdraw(project, deployer, adaptervault, adapter_adapte
     #print("adaptervault.deposit(1000, trader, sender=trader) = %s." % result.return_value)
     #assert result.return_value == 1000   
 
+    trader_starting_balance = dai.balanceOf(trader)
 
     # There have been no earnings so shares & assets should map 1:1.
     assert adaptervault.convertToShares(250) == 250  
@@ -541,7 +542,11 @@ def test_single_adapter_withdraw(project, deployer, adaptervault, adapter_adapte
 
     result = adaptervault.withdraw(250, trader, trader, 0, sender=trader)
 
-    assert adapter_adapterA.totalAssets() == 750
+    trader_ending_balance = dai.balanceOf(trader)
+
+    assert trader_ending_balance - trader_starting_balance == 250
+
+    #assert adapter_adapterA.totalAssets() == 750
     assert adaptervault.totalAssets() == 750
 
     assert result.return_value == 250

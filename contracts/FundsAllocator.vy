@@ -75,7 +75,13 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
         if adapter.delta != 0:            
             adapter_assets_allocated += convert(adapter.delta * -1, uint256)    # TODO : eliminate adapter_assets_allocated if never used.
             d4626_delta += adapter.delta * -1
+            adapters[tx_count] = adapter
             tx_count += 1
+
+        # NEW
+        adapter_result : int256 = convert(adapter.current, int256) + adapter.delta
+        assert adapter_result >= 0, "Adapter resulting balance can't be less than zero!"
+        adapter_assets_allocated += convert(adapter_result, uint256)
 
     assert target_withdraw_balance == 0, "ERROR - Unable to fulfill this withdraw!"
 

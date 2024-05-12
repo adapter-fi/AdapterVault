@@ -1371,7 +1371,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, prege
     log Transfer(_owner, empty(address), shares)
 
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
-    self._balanceAdapters(_asset_amount, pregen_info, True )
+    self._balanceAdapters(_asset_amount, pregen_info, True ) 
 
     # Now account for possible slippage.
     current_balance : uint256 = ERC20(asset).balanceOf(self)
