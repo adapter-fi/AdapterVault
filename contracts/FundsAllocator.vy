@@ -62,7 +62,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
         # End of adapters?
         if adapter.adapter == empty(address): break
 
-        # If the adapte has been removed from the strategy then we must empty it!
+        # If the adapter has been removed from the strategy then we must empty it!
         if adapter.ratio == 0 and adapter.current > 0:
             adapter.target = 0
             adapter.delta = max(convert(adapter.current, int256)*-1, adapter.max_withdraw) # Withdraw it all!
@@ -72,7 +72,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
             target_withdraw_balance = target_withdraw_balance - withdraw
             adapter.delta = convert(withdraw, int256) * -1
 
-        if adapter.delta != 0:
+        if adapter.delta != 0:            
             adapter_assets_allocated += convert(adapter.delta * -1, uint256)    # TODO : eliminate adapter_assets_allocated if never used.
             d4626_delta += adapter.delta * -1
             tx_count += 1
