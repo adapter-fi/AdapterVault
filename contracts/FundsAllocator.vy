@@ -77,7 +77,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
             d4626_delta += adapter.delta * -1
             tx_count += 1
 
-    assert target_withdraw_balance != 0, "ERROR - Unable to fulfill this withdraw!"
+    assert target_withdraw_balance == 0, "ERROR - Unable to fulfill this withdraw!"
 
     return adapter_assets_allocated, d4626_delta, tx_count, adapters, blocked_adapters
 
