@@ -717,6 +717,10 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
     else:
         yield_fees = fees_to_claim
 
+    # Update our global payout records.
+    self.total_yield_fees_claimed += yield_fees
+    self.total_strategy_fees_claimed += strat_fees
+
     # Do we have something independent for the strategy proposer?
     if strat_fees > 0 and self.owner != self.current_proposer:
         # We only pay out if the amount is high enough, otherwise the vault keeps it.
@@ -730,12 +734,8 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
     if yield_fees + strat_fees > 0:
         ERC20(asset).transfer(self.owner, yield_fees + strat_fees)    
 
-    # Update our global payout records.
-    self.total_yield_fees_claimed += yield_fees
-    self.total_strategy_fees_claimed += strat_fees
-
-    # Clear vault asset cache!        
-    self._dirtyAssetCache(True, False) 
+    # Clear all caches!        
+    self._dirtyAssetCache() 
 
     return fees_to_claim
 
@@ -749,9 +749,7 @@ def claim_yield_fees(_asset_request: uint256 = 0, pregen_info: DynArray[Bytes[40
     @return total assets transferred.    
     @dev If _asset_request is 0 then will withdrawl all eligible assets.
     """
-    result : uint256 = self._claim_fees(FeeType.YIELDS, _asset_request, pregen_info)
-    self._dirtyAssetCache()
-    return result
+    return self._claim_fees(FeeType.YIELDS, _asset_request, pregen_info)
 
 
 @external
@@ -763,9 +761,7 @@ def claim_strategy_fees(_asset_request: uint256 = 0, pregen_info: DynArray[Bytes
     @return total assets transferred.    
     @dev If _asset_request is 0 then will withdrawl all eligible assets.
     """
-    result : uint256 = self._claim_fees(FeeType.PROPOSER, _asset_request, pregen_info)
-    self._dirtyAssetCache()
-    return result
+    return self._claim_fees(FeeType.PROPOSER, _asset_request, pregen_info)
 
 
 @external
@@ -777,9 +773,7 @@ def claim_all_fees(_asset_request: uint256 = 0, pregen_info: DynArray[Bytes[4096
     @return total assets transferred.    
     @dev If _asset_request is 0 then will withdrawl all eligible assets.
     """
-    result : uint256 = self._claim_fees(FeeType.BOTH, _asset_request, pregen_info)
-    self._dirtyAssetCache()
-    return result
+    return self._claim_fees(FeeType.BOTH, _asset_request, pregen_info)
 
 
 @internal
