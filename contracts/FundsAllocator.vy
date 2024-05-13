@@ -12,7 +12,7 @@
 
 MAX_ADAPTERS : constant(uint256) = 5 
 
-ADAPTER_BREAKS_LOSS_POINT : constant(decimal) = 0.00001
+ADAPTER_BREAKS_LOSS_POINT : constant(decimal) = 0.05
 
 
 # This structure must match definition in AdapterVault.vy
@@ -62,7 +62,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
         # End of adapters?
         if adapter.adapter == empty(address): break
 
-        # If the adapte has been removed from the strategy then we must empty it!
+        # If the adapter has been removed from the strategy then we must empty it!
         if adapter.ratio == 0 and adapter.current > 0:
             adapter.target = 0
             adapter.delta = max(convert(adapter.current, int256)*-1, adapter.max_withdraw) # Withdraw it all!
@@ -72,12 +72,18 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
             target_withdraw_balance = target_withdraw_balance - withdraw
             adapter.delta = convert(withdraw, int256) * -1
 
-        if adapter.delta != 0:
+        if adapter.delta != 0:            
             adapter_assets_allocated += convert(adapter.delta * -1, uint256)    # TODO : eliminate adapter_assets_allocated if never used.
             d4626_delta += adapter.delta * -1
+            adapters[tx_count] = adapter
             tx_count += 1
 
-    assert target_withdraw_balance != 0, "ERROR - Unable to fulfill this withdraw!"
+        # NEW
+        adapter_result : int256 = convert(adapter.current, int256) + adapter.delta
+        assert adapter_result >= 0, "Adapter resulting balance can't be less than zero!"
+        adapter_assets_allocated += convert(adapter_result, uint256)
+
+    assert target_withdraw_balance == 0, "ERROR - Unable to fulfill this withdraw!"
 
     return adapter_assets_allocated, d4626_delta, tx_count, adapters, blocked_adapters
 

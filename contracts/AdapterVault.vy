@@ -270,10 +270,14 @@ def _set_strategy(_proposer: address, _strategies : AdapterStrategy[MAX_ADAPTERS
     # Are we replacing the old proposer?
     if self.current_proposer != _proposer:
 
-        current_assets : uint256 = self._totalAssetsCached()
+        current_assets : uint256 = self._totalAssetsNoCache() # self._totalAssetsCached()
 
         # Is there enough payout to actually do a transaction?
-        if self._claimable_fees_available(FeeType.PROPOSER, current_assets) > self.min_proposer_payout:
+        yield_fees : uint256 = 0
+        strat_fees : uint256 = 0
+        yield_fees, strat_fees = self._claimable_fees_available(current_assets)
+
+        if strat_fees > self.min_proposer_payout:
                 
             # Pay prior proposer his earned fees.
             self._claim_fees(FeeType.PROPOSER, 0, pregen_info, current_assets)
@@ -306,7 +310,9 @@ def set_strategy(_proposer: address, _strategies : AdapterStrategy[MAX_ADAPTERS]
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return True if strategy was activated, False overwise
     """
-    return self._set_strategy(_proposer, _strategies, _min_proposer_payout, pregen_info)
+    applied: bool = self._set_strategy(_proposer, _strategies, _min_proposer_payout, pregen_info)
+    self._dirtyAssetCache()
+    return applied
 
 
 @internal 
@@ -382,6 +388,8 @@ def _remove_adapter(_adapter: address, pregen_info: DynArray[Bytes[4096], MAX_AD
         if adapter_assets > 0:
             assets_withdrawn : uint256 = self._adapter_withdraw(_adapter, adapter_assets, self, pregen_info, _force)
             if not _force:
+                # If force semantics was chosen it means the contract owner is willing to leave any assets
+                # behind in this adapter because it isn't behaving properly and we urgently need it gone.
                 assert self._adapterAssets(_adapter) == 0, "ERROR - adapter adapter to be removed still has assets!"
                 assert min_transfer_balance <= assets_withdrawn, "ERROR - too much slippage on adapter withdraw."
 
@@ -408,6 +416,7 @@ def remove_adapter(_adapter: address, _rebalance: bool = True, _force: bool = Fa
     @return True if adapter was removed, False otherwise
     """
     return self._remove_adapter(_adapter, pregen_info, _rebalance, _force, _min_assets)
+    
 
 
 @internal
@@ -473,8 +482,8 @@ def _dirtyAssetCache(_clearVaultBalance : bool = True, _clearAdapters : bool = T
     if _clearAdapters:        
         if _adapter == empty(address):
             # Clear them all
-            for cache in range(0, MAX_ADAPTERS):
-                self.adapters_asset_balance_cache[self.adapters[cache]] = 0
+            for adapter in self.adapters:
+                self.adapters_asset_balance_cache[adapter] = 0
         else:
             self.adapters_asset_balance_cache[_adapter] = 0
 
@@ -483,6 +492,7 @@ def _dirtyAssetCache(_clearVaultBalance : bool = True, _clearAdapters : bool = T
 def _vaultAssets() -> uint256:
     if self.vault_asset_balance_cache == 0:
         self.vault_asset_balance_cache = ERC20(asset).balanceOf(self)
+        self.total_asset_balance_cache = 0
     return self.vault_asset_balance_cache
 
 
@@ -497,14 +507,19 @@ def _adapterAssets(_adapter: address) -> uint256:
 
     result = IAdapter(_adapter).totalAssets()
     self.adapters_asset_balance_cache[_adapter] = result
+    self.total_asset_balance_cache = 0
     return result
 
 
 @internal
 def _totalAssetsCached() -> uint256:
+    if self.total_asset_balance_cache > 0:
+        return self.total_asset_balance_cache
     assetqty : uint256 = self._vaultAssets()
     for adapter in self.adapters:
         assetqty += self._adapterAssets(adapter)
+
+    self.total_asset_balance_cache = assetqty
 
     return assetqty
 
@@ -565,7 +580,10 @@ def totalReturns() -> int256:
 
 @internal
 @view 
-def _claimable_fees_available(_yield : FeeType, _current_assets : uint256 = 0) -> uint256:
+def _claimable_fees_available(_current_assets : uint256 = 0) -> (uint256, uint256):
+    """
+    Returns yield fees, strategy fees available.
+    """
     total_assets : uint256 = _current_assets
 
     # Only call _totalAssets() if it wasn't passed in.
@@ -574,39 +592,21 @@ def _claimable_fees_available(_yield : FeeType, _current_assets : uint256 = 0) -
 
     total_returns : int256 = self._totalReturns(total_assets)
     if total_returns <= 0: 
-        return 0
+        return 0, 0
+
+    yield_fees_available: uint256 = 0
+    strategy_fees_available : uint256 = 0
 
     total_yield_ever : uint256 = (convert(total_returns,uint256) * YIELD_FEE_PERCENTAGE) / 100
     total_strat_fees_ever : uint256 = (convert(total_returns,uint256) * PROPOSER_FEE_PERCENTAGE) / 100
 
-    if _yield == FeeType.PROPOSER and \
-        self.total_strategy_fees_claimed >= total_strat_fees_ever: 
-            return 0
-    elif _yield == FeeType.YIELDS and \
-        self.total_yield_fees_claimed >= total_yield_ever:
-            return 0
-    elif _yield == FeeType.BOTH and \
-        self.total_strategy_fees_claimed + self.total_yield_fees_claimed >= total_strat_fees_ever + total_yield_ever:
-            return 0
+    if self.total_yield_fees_claimed < total_yield_ever:
+        yield_fees_available = total_yield_ever - self.total_yield_fees_claimed
 
-    total_fees_available : uint256 = 0
-    if _yield == FeeType.YIELDS or _yield == FeeType.BOTH:
-        total_fees_available += total_yield_ever - self.total_yield_fees_claimed
-    
-    if _yield == FeeType.PROPOSER or _yield == FeeType.BOTH:
-        total_fees_available += total_strat_fees_ever - self.total_strategy_fees_claimed           
+    if self.total_strategy_fees_claimed < total_strat_fees_ever:
+        strategy_fees_available = total_strat_fees_ever - self.total_strategy_fees_claimed
 
-    # We want to do the above sanity checks even if total_assets is zero just in case.
-    #if total_assets == 0: return 0
-    if total_assets < total_fees_available:
-        # Is it a rounding error?
-        if total_fees_available - 1 == total_assets:
-            total_fees_available -= 1
-        else:
-            xxmsg : String[277] = concat("Fees ", uint2str(total_fees_available), " > current assets : ", uint2str(total_assets), " against ", uint2str(convert(total_returns,uint256)), " returns!")
-            assert total_assets >= total_fees_available, xxmsg       
-
-    return total_fees_available
+    return yield_fees_available, strategy_fees_available
 
 
 @external
@@ -617,7 +617,10 @@ def claimable_yield_fees_available(_current_assets : uint256 = 0) -> uint256:
     @param _current_assets optional parameter if current total assets is already known.
     @return total assets contract owner could withdraw now in fees.
     """
-    return self._claimable_fees_available(FeeType.YIELDS, _current_assets)    
+    yield_fees : uint256 = 0 
+    strategy_fees: uint256 = 0
+    yield_fees, strategy_fees = self._claimable_fees_available(_current_assets)    
+    return yield_fees
 
 
 @external
@@ -628,7 +631,10 @@ def claimable_strategy_fees_available(_current_assets : uint256 = 0) -> uint256:
     @param _current_assets optional parameter if current total assets is already known.
     @return total assets strategy proposer is owed presently.
     """
-    return self._claimable_fees_available(FeeType.PROPOSER, _current_assets)  
+    yield_fees : uint256 = 0 
+    strategy_fees: uint256 = 0
+    yield_fees, strategy_fees = self._claimable_fees_available(_current_assets)  
+    return strategy_fees
 
 
 @external
@@ -639,58 +645,99 @@ def claimable_all_fees_available(_current_assets : uint256 = 0) -> uint256:
     @param _current_assets optional parameter if current total assets is already known.
     @return Claimable fees available for yield and proposer
     """
-    return self._claimable_fees_available(FeeType.BOTH, _current_assets)      
+    yield_fees : uint256 = 0 
+    strategy_fees: uint256 = 0
+    yield_fees, strategy_fees = self._claimable_fees_available(_current_assets)  
+    return yield_fees + strategy_fees     
 
 
 @internal
-def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _current_assets : uint256 = 0) -> uint256:
-    # If current proposer is zero address we pay no strategy fees.    
-    if _yield != FeeType.YIELDS and self.current_proposer == empty(address): return 0
+def _claimable_fees_by_me(_yield : FeeType, _asset_amount: uint256, _current_assets: uint256) -> (uint256, uint256):
+    yield_fees : uint256 = 0
+    strat_fees : uint256 = 0
 
-    claim_amount : uint256 = _asset_amount
+    yield_fees, strat_fees = self._claimable_fees_available(_current_assets)
 
-    total_fees_remaining : uint256 = self._claimable_fees_available(_yield, _current_assets)
-    if _asset_amount == 0:
-        claim_amount = total_fees_remaining
+    # Only yields, no strategy.
+    if _yield == FeeType.YIELDS:
+        strat_fees = 0
 
-    # Do we have _asset_amount of fees available to claim?
-    assert claim_amount <= total_fees_remaining, "Request exceeds available fees."
+    # Only strategy, no yields.
+    if _yield == FeeType.PROPOSER:
+        yield_fees = 0
 
-    # Good claim. Do we have the balance locally?
-    if ERC20(asset).balanceOf(self) < claim_amount:
+    # If current proposer is zero address then we won't pay yield fees.
+    if self.current_proposer == empty(address):
+        yield_fees = 0
 
-        # Need to liquidate some shares to fulfill 
-        self._balanceAdapters(claim_amount, pregen_info)
+    # Only owner may claim yield fees.
+    if (_yield == FeeType.YIELDS or _yield == FeeType.BOTH) and msg.sender != self.owner:
+        yield_fees = 0        
 
-    strat_fee_amount : uint256 = 0
+    # Only current proposer or governance may claim strategy fees.
     if _yield == FeeType.PROPOSER or _yield == FeeType.BOTH: 
         assert msg.sender == self.current_proposer or msg.sender == self.governance, "Only curent proposer or governance may claim strategy fees."
 
-        strat_fee_amount = min(claim_amount, self._claimable_fees_available(FeeType.PROPOSER, _current_assets))
-        claim_amount -= strat_fee_amount
+    # Do we have enough fees to pay out the request? If so how much should we extract?
+    assert _asset_amount <= yield_fees + strat_fees, "Not enough fees to fulfill requested amount."
+    return yield_fees, strat_fees    
 
-    elif _yield == FeeType.YIELDS:
-        assert msg.sender == self.owner, "Only owner may claim yield fees."
 
+@internal
+def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _current_assets : uint256 = 0, _min_assets: uint256 = 0) -> uint256:
+    yield_fees : uint256 = 0
+    strat_fees : uint256 = 0
+
+    yield_fees, strat_fees = self._claimable_fees_by_me(_yield, _asset_amount, _current_assets)
+
+    fees_to_claim : uint256 = yield_fees + strat_fees
+    if _asset_amount > 0:               # Otherwise we take it all.
+        fees_to_claim = _asset_amount   # This will be lower than or equal to the total available fees.
+
+    # Account for slippage minimums.
+    min_fees_to_claim : uint256 = self._defaultSlippage(fees_to_claim, _min_assets)
+
+    # Do we have enough balance locally to satisfy the claim?
+    current_vault_assets : uint256 = ERC20(asset).balanceOf(self)
+    if current_vault_assets < min_fees_to_claim:
+        # Need to liquidate some shares to fulfill. Insist on withdraw only semantics.
+        # Note - there is a chance that balance adapters could return more than we asked for so
+        #        don't just give it all away in case there's an overage.
+        fees_to_claim = min(self._balanceAdapters(fees_to_claim, pregen_info, True), fees_to_claim)
+        assert fees_to_claim >= min_fees_to_claim, "Couldn't get adequate assets into the vault to support fee request."
     else:
-        assert False, "Invalid FeeType!"    
+        fees_to_claim = min(_asset_amount, current_vault_assets)
 
-    self.total_yield_fees_claimed += claim_amount
-    self.total_strategy_fees_claimed += strat_fee_amount
+    # Adjust fees proportionally to account for slippage.
+    if strat_fees > 0 and yield_fees > 0:
+        strat_fees = convert((convert(strat_fees, decimal)/convert(strat_fees+yield_fees, decimal))*convert(fees_to_claim, decimal), uint256)     
+        yield_fees = fees_to_claim - strat_fees   
+    elif strat_fees > 0:
+        strat_fees = fees_to_claim
+    else:
+        yield_fees = fees_to_claim
+
+    # Update our global payout records.
+    self.total_yield_fees_claimed += yield_fees
+    self.total_strategy_fees_claimed += strat_fees
 
     # Do we have something independent for the strategy proposer?
-    if strat_fee_amount > 0 and self.owner != self.current_proposer:
-        ERC20(asset).transfer(self.current_proposer, strat_fee_amount)
-        
+    if strat_fees > 0 and self.owner != self.current_proposer:
+        # We only pay out if the amount is high enough, otherwise the vault keeps it.
+        # Unless the person requesting the payout is the current proposer then he must
+        # want it anyway.
+        if msg.sender == self.current_proposer or strat_fees >= self.min_proposer_payout:
+            ERC20(asset).transfer(self.current_proposer, strat_fees)
+        strat_fees = 0
+
     # Is there anything left over to transfer for Yield? (Which might also include strat)
-    if claim_amount > 0:
-        ERC20(asset).transfer(self.owner, claim_amount + strat_fee_amount)    
+    if yield_fees + strat_fees > 0:
+        ERC20(asset).transfer(self.owner, yield_fees + strat_fees)    
 
-    # Clear vault asset cache!
-    if strat_fee_amount > 0 or claim_amount > 0:               
-        self._dirtyAssetCache(True, False)        
+    # Clear all caches!        
+    self._dirtyAssetCache() 
 
-    return claim_amount + strat_fee_amount
+    return fees_to_claim
 
 
 @external
@@ -733,7 +780,10 @@ def claim_all_fees(_asset_request: uint256 = 0, pregen_info: DynArray[Bytes[4096
 @view
 def _convertToShares(_asset_amount: uint256, _starting_assets: uint256) -> uint256:
     shareqty : uint256 = self.totalSupply
-    claimable_fees : uint256 = self._claimable_fees_available(FeeType.BOTH, _starting_assets)
+    yield_fees : uint256 = 0
+    strat_fees : uint256 = 0
+    yield_fees, strat_fees = self._claimable_fees_available(_starting_assets)
+    claimable_fees : uint256 = yield_fees + strat_fees
     
     # Less fees
     assert _starting_assets >= claimable_fees, "_convertToShares sanity failure!" # BDM
@@ -757,11 +807,15 @@ def convertToShares(_asset_amount: uint256) -> uint256:
     """
     return self._convertToShares(_asset_amount, self._totalAssetsNoCache())
 
+
 @internal
 @view
 def _convertToAssets(_share_amount: uint256, _starting_assets: uint256) -> uint256:
     shareqty : uint256 = self.totalSupply
-    claimable_fees : uint256 = self._claimable_fees_available(FeeType.BOTH, _starting_assets)
+    yield_fees : uint256 = 0
+    strat_fees : uint256 = 0
+    yield_fees, strat_fees = self._claimable_fees_available(_starting_assets)
+    claimable_fees : uint256 = yield_fees + strat_fees
     
     # Less fees
     assert _starting_assets >= claimable_fees, "_convertToAssets sanity failure!" # BDM    
@@ -841,7 +895,9 @@ def mint(_share_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes
     @return Asset value of _share_amount
     """
     assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
-    return self._deposit(assetqty, _receiver, pregen_info)
+    minted: uint256 = self._deposit(assetqty, _receiver, pregen_info)
+    self._dirtyAssetCache()
+    return minted
 
 
 @external
@@ -901,7 +957,9 @@ def redeem(_share_amount: uint256, _receiver: address, _owner: address, pregen_i
     """
     assetqty: uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
     # NOTE - this is accepting the MAX_SLIPPAGE_PERCENT % slippage default.
-    return self._withdraw(assetqty, _receiver, _owner, pregen_info, 0)
+    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, pregen_info, 0)
+    self._dirtyAssetCache()
+    return withdrawn
 
 
 # This structure must match definition in Funds Allocator contract.
@@ -960,7 +1018,6 @@ def _getCurrentBalances() -> (uint256, BalanceAdapter[MAX_ADAPTERS], uint256, ui
 
     adapter_balances: BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
 
-
     # If there are no adapters then nothing to do.
     if len(self.adapters) == 0: return current_local_asset_balance, adapter_balances, current_local_asset_balance, 0
 
@@ -994,62 +1051,68 @@ def getCurrentBalances() -> (uint256, BalanceAdapter[MAX_ADAPTERS], uint256, uin
     @notice This function returns current balances of adapters
     @return Current balances of adapters
     """
-    return self._getCurrentBalances()
+    current_local_asset_balance: uint256 = 0
+    adapter_balances: BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
+    total_balance: uint256 = 0
+    total_ratios: uint256 = 0
+    current_local_asset_balance, adapter_balances, total_balance, total_ratios = self._getCurrentBalances()
+    self._dirtyAssetCache()
+    return current_local_asset_balance, adapter_balances, total_balance, total_ratios
 
 
-@external
-@view
-def getTargetBalances(_d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
-    """
-    @dev    Returns: 
-            1) uint256 - the total asset allocation across all adapters (less _d4626_asset_target),
-            2) int256 - the total delta of local d4626 assets that would be moved across
-            all transactions, 
-            3) uint256 - the total number of planned txs to achieve these targets,
-            4) BalanceAdapter[MAX_ADAPTERS] - the updated list of transactions required to
-            meet the target goals sorted in ascending order of BalanceAdapter.delta.
-            5) A list of any adapters that should be blocked because they lost funds.
+# @external
+# @view
+# def getTargetBalances(_d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+#     """
+#     @dev    Returns: 
+#             1) uint256 - the total asset allocation across all adapters (less _d4626_asset_target),
+#             2) int256 - the total delta of local d4626 assets that would be moved across
+#             all transactions, 
+#             3) uint256 - the total number of planned txs to achieve these targets,
+#             4) BalanceAdapter[MAX_ADAPTERS] - the updated list of transactions required to
+#             meet the target goals sorted in ascending order of BalanceAdapter.delta.
+#             5) A list of any adapters that should be blocked because they lost funds.
 
-    @param  _d4626_asset_target minimum asset target goal to be made available
-            for withdraw from the 4626 contract.
+#     @param  _d4626_asset_target minimum asset target goal to be made available
+#             for withdraw from the 4626 contract.
 
-    @param  _total_assets the sum of all assets held by the d4626 plus all of
-            its adapter adapters.
+#     @param  _total_assets the sum of all assets held by the d4626 plus all of
+#             its adapter adapters.
 
-    @param _total_ratios the total of all BalanceAdapter.ratio values in _adapter_balances.
+#     @param _total_ratios the total of all BalanceAdapter.ratio values in _adapter_balances.
 
-    @param _adapter_balances current state of the adapter adapters. BDM TODO Specify TYPES!
+#     @param _adapter_balances current state of the adapter adapters. BDM TODO Specify TYPES!
 
-    @param _min_outgoing_tx the minimum size of a tx depositing funds to an adapter (as set by the current strategy).
+#     @param _min_outgoing_tx the minimum size of a tx depositing funds to an adapter (as set by the current strategy).
 
-    """    
-    current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
+#     """    
+#     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
 
-    return FundsAllocator(self.funds_allocator).getTargetBalances(current_local_asset_balance, _d4626_asset_target, _total_assets, _total_ratios, _adapter_balances, _min_outgoing_tx, _withdraw_only)
-
-
-@internal
-@view
-def _getBalanceTxs( _target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
-    current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
-    return FundsAllocator(self.funds_allocator).getBalanceTxs( current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
-
-
-@external
-@view
-def getBalanceTxs( _target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
-    current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
-    return FundsAllocator(self.funds_allocator).getBalanceTxs( current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+#     return FundsAllocator(self.funds_allocator).getTargetBalances(current_local_asset_balance, _d4626_asset_target, _total_assets, _total_ratios, _adapter_balances, _min_outgoing_tx, _withdraw_only)
 
 
 @internal
-def _balanceAdapters( _target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT ):
+@view
+def _getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+    current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
+    return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+
+
+# @external
+# @view
+# def getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
+#     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
+#     return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+
+
+@internal
+def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool, _max_txs: uint8 = MAX_BALTX_DEPOSIT ) -> uint256:
     # Make sure we have enough assets to send to _receiver.
     txs: BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters: address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
 
     # If there are no adapters then nothing to do.
-    if len(self.adapters) == 0: return 
+    if len(self.adapters) == 0: return ERC20(asset).balanceOf(self)
 
     # Setup current state of vault & adapters & strategy.
     d4626_assets: uint256 = 0
@@ -1058,7 +1121,7 @@ def _balanceAdapters( _target_asset_balance: uint256, pregen_info: DynArray[Byte
     total_ratios: uint256 = 0
     d4626_assets, adapter_states, total_assets, total_ratios = self._getCurrentBalances()
 
-    txs, blocked_adapters = self._getBalanceTxs(_target_asset_balance, _max_txs, self.min_proposer_payout, total_assets, total_ratios, adapter_states )
+    txs, blocked_adapters = self._getBalanceTxs(_target_asset_balance, _max_txs, self.min_proposer_payout, total_assets, total_ratios, adapter_states, _withdraw_only)
 
     # If there are blocked_adapters then set their strategy ratios to zero.
     for adapter in blocked_adapters:
@@ -1098,17 +1161,22 @@ def _balanceAdapters( _target_asset_balance: uint256, pregen_info: DynArray[Byte
             qty: uint256 = convert(dtx.qty * -1, uint256)         
             assets_withdrawn : uint256 = self._adapter_withdraw(dtx.adapter, qty, self, pregen_info)
 
+    return ERC20(asset).balanceOf(self)
+
 
 @external
-def balanceAdapters( _target_asset_balance: uint256, _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])):
+def balanceAdapters(_target_asset_balance: uint256, _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
     """
     @notice The function provides a way to balance adapters
+    @dev   returns the actual balances of assets held in the local vault after balancing.
     @param _target_asset_balance Target amount for assets balance
     @param _max_txs Maximum amount of adapters
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     """
     assert msg.sender == self.owner, "only owner can call balanceAdapters"
-    self._balanceAdapters(_target_asset_balance, pregen_info, _withdraw_only, _max_txs)
+    ret: uint256 = self._balanceAdapters(_target_asset_balance, pregen_info, _withdraw_only, _max_txs)
+    self._dirtyAssetCache()
+    return ret
 
 
 @internal
@@ -1233,7 +1301,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
     # It's our intention to move all funds into the lending adapters so 
     # our target balance is zero.
-    self._balanceAdapters( empty(uint256), pregen_info)
+    self._balanceAdapters(empty(uint256), pregen_info, False)
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
@@ -1250,10 +1318,9 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
     self._mint(_receiver, transfer_shares)
 
     # Update all-time assets deposited for yield tracking.
-    self.total_assets_deposited += _asset_amount
+    self.total_assets_deposited += total_after_assets - total_starting_assets
 
-    # OLD why was sender twice? - log Deposit(msg.sender, msg.sender, _asset_amount, transfer_shares)
-    log Deposit(msg.sender, _receiver, _asset_amount, transfer_shares)
+    log Deposit(msg.sender, _receiver, total_after_assets - total_starting_assets, transfer_shares)
 
     return transfer_shares
 
@@ -1268,11 +1335,14 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount deposited to receiver
     """
-    return self._deposit(_asset_amount, _receiver, pregen_info, _min_shares)
+    result : uint256 = self._deposit(_asset_amount, _receiver, pregen_info, _min_shares)
+    self._dirtyAssetCache()
+    return result
+
 
 
 @internal
-def _withdraw(_asset_amount: uint256,_receiver: address,_owner: address, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _min_assets: uint256 = 0) -> uint256:
+def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _min_assets: uint256 = 0) -> uint256:
     min_transfer_balance : uint256 = self._defaultSlippage(_asset_amount, _min_assets)
 
     # How many shares does it take to get the requested asset amount?
@@ -1295,7 +1365,7 @@ def _withdraw(_asset_amount: uint256,_receiver: address,_owner: address, pregen_
     log Transfer(_owner, empty(address), shares)
 
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
-    self._balanceAdapters( _asset_amount, pregen_info, True )
+    self._balanceAdapters(_asset_amount, pregen_info, True ) 
 
     # Now account for possible slippage.
     current_balance : uint256 = ERC20(asset).balanceOf(self)
@@ -1321,6 +1391,7 @@ def _withdraw(_asset_amount: uint256,_receiver: address,_owner: address, pregen_
 
     return shares
 
+
 @external
 def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_assets: uint256 = 0, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
     """
@@ -1332,7 +1403,10 @@ def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_ass
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount withdrawn to receiver
     """
-    return self._withdraw(_asset_amount,_receiver,_owner, pregen_info, _min_assets)
+    result : uint256 = self._withdraw(_asset_amount,_receiver,_owner, pregen_info, _min_assets)
+    self._dirtyAssetCache()
+    return result
+
 
 ### ERC20 functionality.
 
@@ -1398,6 +1472,7 @@ def approve(_spender : address, _value : uint256) -> bool:
     """
     self._approve(msg.sender, _spender, _value) 
     return True    
+
 
 @external
 def claimRewards(_adapter: address, reciepent: address):
