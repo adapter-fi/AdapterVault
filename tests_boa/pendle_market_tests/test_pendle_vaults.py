@@ -199,9 +199,9 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         asset_bal_pre = asset.balanceOf(adaptervault)
         trader_bal_pre = asset.balanceOf(trader)
         assert adaptervault.balanceOf(trader) == adaptervault.convertToShares( adaptervault.convertToAssets(adaptervault.balanceOf(trader)))
-        adaptervault.eval("self.vault_asset_balance_cache=0")
-        adaptervault.eval("self.total_asset_balance_cache=0")
-        adaptervault.eval("self.adapters_asset_balance_cache[" + pendle_adapter.address + "]=0")
+        # adaptervault.eval("self.vault_asset_balance_cache=0")
+        # adaptervault.eval("self.total_asset_balance_cache=0")
+        # adaptervault.eval("self.adapters_asset_balance_cache[" + pendle_adapter.address + "]=0")
         adaptervault.withdraw(
             adaptervault.convertToAssets(adaptervault.balanceOf(trader)),
             trader,
