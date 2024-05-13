@@ -128,7 +128,8 @@ def pt(setup_chain):
         factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
         return factory.at(PENDLE_PT)
 
-def test_ena(setup_chain, ena, trader, adaptervault, pendle_adapter, deployer, pendleOracle, pt, pendleMarket):
+
+def test_markets(setup_chain, ena, trader, adaptervault, pendle_adapter, deployer, pendleOracle, pt, pendleMarket):
     strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
     strategy[0] = (pendle_adapter.address, 1)
 
@@ -205,3 +206,8 @@ def test_ena(setup_chain, ena, trader, adaptervault, pendle_adapter, deployer, p
         #Theres always rounding issues somewhere...
         assert pt_burned == pytest.approx(trader_ena_gained + vault_ena_gained), "withdraw was not pegged"
 
+        #Lets try a deposit, it all should goto cash
+        ena.approve(adaptervault, 1*10**18)
+        adaptervault.deposit(1*10**18, trader)
+        assert ena.balanceOf(adaptervault) - ena_bal_post == pytest.approx(10**18), "ena not gained sufficiently"
+        assert pt.balanceOf(adaptervault) - pt_bal_post == 0, "managed to deposit to PT post-maturity"
