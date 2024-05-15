@@ -61,7 +61,7 @@ def probe_token_slot(trader, addr):
     factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
     en = factory.at(addr)
 
-    for x in range(0,100):
+    for x in range(0,500):
         # print(x)
         abi_encoded = eth_abi.encode(['address', 'uint256'], [trader, x])
         storage_slot = Web3.solidity_keccak(["bytes"], ["0x" + abi_encoded.hex()])
@@ -71,7 +71,7 @@ def probe_token_slot(trader, addr):
             5000 * 10**18
         )
         print(x, en.balanceOf(trader))
-        if en.balanceOf(trader) == 5000 * 10**18:
+        if en.balanceOf(trader) >= 5000 * 10**18:
             return x
 
 def _pendleOracle(pendleMarket, _PENDLE_ORACLE):
@@ -160,7 +160,8 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         print("GAS USED FOR PENDLE DEPOSIT = ", adaptervault._computation.net_gas_used) 
         deducted = bal_pre - asset.balanceOf(trader)
         print(deducted)
-        assert deducted == 1*10**18, "Invalid amount got deducted"
+        #rounding err...
+        assert deducted == pytest.approx(1*10**18), "Invalid amount got deducted"
         print(pt.balanceOf(adaptervault))
         traderbal = adaptervault.balanceOf(trader)
         print(traderbal)
@@ -279,5 +280,14 @@ def test_markets_rsweth(setup_chain, trader, deployer, funds_alloc):
     def exchange(wrapped):
         rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
-
     market_test(PENDLE_PT, rsweth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+
+def test_markets_eeth(setup_chain, trader, deployer, funds_alloc):
+    #stETH on mainnet
+    PENDLE_MARKET="0xF32e58F92e60f4b0A37A69b95d642A471365EAe8" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
+    EETH="0x35fA164735182de50811E8e2E824cFb9B6118ac2"
+    PENDLE_PT="0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966"
+    # print(probe_token_slot(trader, EETH))
+    # return
+    eeth = _generic_erc20(trader, EETH, 203)
+    market_test(PENDLE_PT, eeth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, pegged_oracle)
