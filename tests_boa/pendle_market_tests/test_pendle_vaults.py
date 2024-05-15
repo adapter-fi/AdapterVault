@@ -260,7 +260,7 @@ def test_markets_rseth(setup_chain, trader, deployer, funds_alloc):
     RSETH="0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7"
     PENDLE_PT="0xB05cABCd99cf9a73b19805edefC5f67CA5d1895E"
     # print(probe_token_slot(trader, RSETH))
-    orc = pendle_exchangerateoracle(0x7A05D25E91C478EFFd37Baf86730bB4B84bE1E32)
+    orc = pendle_exchangerateoracle("0x7A05D25E91C478EFFd37Baf86730bB4B84bE1E32")
     def exchange(wrapped):
         rate = orc.getExchangeRate()
         return (wrapped * rate) // 10**18
