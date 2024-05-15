@@ -121,7 +121,7 @@ def test_set_acl_claim_fees(project, deployer, AdapterVault, adapter_adapterA, d
     print("AdapterVault.claimable_strategy_fees_available() : %s." % AdapterVault.claimable_strategy_fees_available())
     print("AdapterVault.claimable_yield_fees_available() : %s." % AdapterVault.claimable_yield_fees_available())
     print("AdapterVault.claimable_all_fees_available() : %s." % AdapterVault.claimable_all_fees_available())
-
+    print("Minimum strategy payout: %s." % AdapterVault.min_proposer_payout())
 
 
     #No issues if new strategy is from the same proposer
@@ -136,9 +136,13 @@ def test_set_acl_claim_fees(project, deployer, AdapterVault, adapter_adapterA, d
     print("current_strat_funds : %s." % current_strat_funds)
 
     current_owner_funds = dai.balanceOf(AdapterVault.owner())
-    print("current_owner_funds : %s." % current_owner_funds)        
+    print("current_owner_funds : %s." % current_owner_funds)  
+
+    assert AdapterVault.claimable_strategy_fees_available() == 10, "Strat fees all wrong #1!"      
 
     AdapterVault.set_strategy(strategizer, strategy, AdapterVault.min_proposer_payout(), sender=deployer)
+
+    assert AdapterVault.claimable_strategy_fees_available() == 10, "Strat fees all wrong #2!"
 
     #Per the audit report, if proposer fees claimable > min_proposer_payout, then governance cannot change the strategy...
     AdapterVault.set_strategy(strategizer2, strategy, AdapterVault.min_proposer_payout(), sender=deployer)
@@ -146,6 +150,11 @@ def test_set_acl_claim_fees(project, deployer, AdapterVault, adapter_adapterA, d
     updated_strat_funds = dai.balanceOf(strategizer)
 
     print("updated_strat_funds : %s." % updated_strat_funds)
+
+    print("AdapterVault.claimable_strategy_fees_available() : %s." % AdapterVault.claimable_strategy_fees_available())
+    print("AdapterVault.claimable_yield_fees_available() : %s." % AdapterVault.claimable_yield_fees_available())
+    print("AdapterVault.claimable_all_fees_available() : %s." % AdapterVault.claimable_all_fees_available())
+    
 
     assert updated_strat_funds > current_strat_funds, "strategizer didn't get paid!"
 
