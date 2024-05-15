@@ -130,11 +130,11 @@ def pendle_pt(_pendle_pt):
         factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
         return factory.at(_pendle_pt)
 
-def pendle_exchangerateoracle(exchangerateoracle):
-    with open("contracts/vendor/IPExchangeRateOracle.json") as f:
+def pendle_SY(_sy):
+    with open("contracts/vendor/IStandardizedYield.json") as f:
         j = json.load(f)
-        factory = boa.loads_abi(json.dumps(j["abi"]), name="IPExchangeRateOracle")
-        return factory.at(exchangerateoracle)
+        factory = boa.loads_abi(json.dumps(j["abi"]), name="IStandardizedYield")
+        return factory.at(_sy)
 
 
 def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc, _PENDLE_ORACLE, oracle):
@@ -260,9 +260,24 @@ def test_markets_rseth(setup_chain, trader, deployer, funds_alloc):
     RSETH="0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7"
     PENDLE_PT="0xB05cABCd99cf9a73b19805edefC5f67CA5d1895E"
     # print(probe_token_slot(trader, RSETH))
-    orc = pendle_exchangerateoracle("0x7A05D25E91C478EFFd37Baf86730bB4B84bE1E32")
+    orc = pendle_SY("0x730A5E2AcEbccAA5e9095723B3CB862739DA793c")
     def exchange(wrapped):
-        rate = orc.getExchangeRate()
+        rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
     rseth = _generic_erc20(trader, RSETH, 51)
     market_test(PENDLE_PT, rseth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+
+def test_markets_rsweth(setup_chain, trader, deployer, funds_alloc):
+    #stETH on mainnet
+    PENDLE_MARKET="0xA9355a5d306c67027C54De0e5a72df76Befa5694" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
+    RSWETH="0xFAe103DC9cf190eD75350761e95403b7b8aFa6c0"
+    PENDLE_PT="0x5cb12D56F5346a016DBBA8CA90635d82e6D1bcEa"
+    # print(probe_token_slot(trader, RSWETH))
+    # return
+    rsweth = _generic_erc20(trader, RSWETH, 98)
+    orc = pendle_SY("0x7786729eEe8b9d30fE7d91fDFf23A0f1D0C615D9")
+    def exchange(wrapped):
+        rate = orc.exchangeRate()
+        return (wrapped * rate) // 10**18
+
+    market_test(PENDLE_PT, rsweth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
