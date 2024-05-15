@@ -307,3 +307,18 @@ def test_markets_ezeth(setup_chain, trader, deployer, funds_alloc):
         return (wrapped * rate) // 10**18
 
     market_test(PENDLE_PT, ezeth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+
+def test_markets_sweth(setup_chain, trader, deployer, funds_alloc):
+    #stETH on mainnet
+    PENDLE_MARKET="0xa5fD0E8991bE631917D2d2B2d5dACfD7bFef7876" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
+    SWETH="0xf951E335afb289353dc249e82926178EaC7DEd78"
+    PENDLE_PT="0xac440d0eE23FA69632Aa731322C2a480dD1376e4"
+    # print(probe_token_slot(trader, SWETH))
+    # return
+    sweth = _generic_erc20(trader, SWETH, 98)
+    orc = pendle_SY("0xaa68CA9C69a4ff22203cE189Ce4448d7401875E8")
+    def exchange(wrapped):
+        rate = orc.exchangeRate()
+        return (wrapped * rate) // 10**18
+
+    market_test(PENDLE_PT, sweth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
