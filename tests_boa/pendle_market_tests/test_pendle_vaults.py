@@ -19,8 +19,8 @@ MAX_ADAPTERS = 5 # Must match the value from AdapterVault.vy
 @pytest.fixture
 def setup_chain():
     with boa.swap_env(Env()):
-        #tests in this file require mainnet block 19675100: Apr-17-2024 12:09:23 PM +UTC
-        forked_env_mainnet(19675100)
+        #tests in this file require mainnet block 19850000: May-11-2024 11:13:47 PM +UTC
+        forked_env_mainnet(19850000)
         yield
 
 @pytest.fixture
@@ -156,7 +156,8 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         asset.approve(adaptervault, 1*10**18)
         bal_pre = asset.balanceOf(trader)
         ex_rate = pendleOracle.getPtToAssetRate(_pendle_market, 1200)
-        adaptervault.deposit(1*10**18, trader)
+        pregen_bytes = pendle_adapter.generate_pregen_info(10**18)
+        adaptervault.deposit(1*10**18, trader, 0, [pregen_bytes])
         print("GAS USED FOR PENDLE DEPOSIT = ", adaptervault._computation.net_gas_used) 
         deducted = bal_pre - asset.balanceOf(trader)
         print(deducted)
@@ -291,3 +292,18 @@ def test_markets_eeth(setup_chain, trader, deployer, funds_alloc):
     # return
     eeth = _generic_erc20(trader, EETH, 203)
     market_test(PENDLE_PT, eeth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, pegged_oracle)
+
+def test_markets_ezeth(setup_chain, trader, deployer, funds_alloc):
+    #stETH on mainnet
+    PENDLE_MARKET="0xD8F12bCDE578c653014F27379a6114F67F0e445f" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
+    EZETH="0xbf5495Efe5DB9ce00f80364C8B423567e58d2110"
+    PENDLE_PT="0xf7906F274c174A52d444175729E3fa98f9bde285"
+    # print(probe_token_slot(trader, EZETH))
+    # return
+    ezeth = _generic_erc20(trader, EZETH, 51)
+    orc = pendle_SY("0x22E12A50e3ca49FB183074235cB1db84Fe4C716D")
+    def exchange(wrapped):
+        rate = orc.exchangeRate()
+        return (wrapped * rate) // 10**18
+
+    market_test(PENDLE_PT, ezeth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
