@@ -29,6 +29,9 @@ endif
 hardhat: check-env check-node-version
 	npx hardhat node  --hostname 127.0.0.1 --port 8545 --fork https://eth-mainnet.g.alchemy.com/v2/${WEB3_ALCHEMY_API_KEY} --fork-block-number 17024800
 
+test: check-env
+	pytest -s tests_boa/ --ignore tests_boa/test_transient.py
+
 
 abi-export:
 	ape compile

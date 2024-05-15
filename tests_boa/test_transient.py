@@ -24,4 +24,7 @@ def get() -> uint256:
     
     assert cont.get() == 0
     cont.set(100)
+    boa.env.time_travel(seconds=1200)
+    #re issue https://github.com/vyperlang/titanoboa/issues/218
+    #this test broken in boa..
     assert cont.get() == 0
