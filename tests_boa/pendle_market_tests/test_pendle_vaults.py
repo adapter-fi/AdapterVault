@@ -35,13 +35,13 @@ def trader(setup_chain):
     boa.env.set_balance(acc, 1000*10**18)
     return acc
 
-def _steth(trader, addr):
+def _generic_erc20(trader, addr, slot):
     with open("contracts/vendor/IERC20.json") as f:
         j = json.load(f)
     factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
     st = factory.at(addr)
     #Trader needs to acquire some ETH, dunno how
-    abi_encoded = eth_abi.encode(['address', 'uint256'], [trader, 0])
+    abi_encoded = eth_abi.encode(['address', 'uint256'], [trader, slot])
     storage_slot = Web3.solidity_keccak(["bytes"], ["0x" + abi_encoded.hex()])
 
     boa.env.set_storage(
@@ -51,36 +51,28 @@ def _steth(trader, addr):
     )
     print(st.balanceOf(trader))
     print(boa.env.get_balance(trader))
-    assert st.balanceOf(trader) > 5000 * 10**18, "Trader did not get 'airdrop'"
+    assert st.balanceOf(trader) >= 5000 * 10**18, "Trader did not get 'airdrop'"
     return st
 
-def _ena(trader, addr):
+
+def probe_token_slot(trader, addr):
     with open("contracts/vendor/IERC20.json") as f:
         j = json.load(f)
     factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
     en = factory.at(addr)
-    #Trader needs to acquire some ETH, dunno how
-    abi_encoded = eth_abi.encode(['address', 'uint256'], [trader, 2])
-    storage_slot = Web3.solidity_keccak(["bytes"], ["0x" + abi_encoded.hex()])
 
-    # print("en", en.balanceOf("0xd4b34207a671b813b5e66d31ea0b0a9849de9bc1"))
-
-    # for x in range(0,10):
-    #     print(x)
-    #     abi_encoded = eth_abi.encode(['address', 'uint256'], ["0xd4B34207a671b813B5E66d31EA0b0A9849de9bc1", x])
-    #     storage_slot = Web3.solidity_keccak(["bytes"], ["0x" + abi_encoded.hex()])
-    #     print(boa.env.evm.vm.state.get_storage(boa.util.abi.Address(ENA).canonical_address, Web3.to_int(storage_slot)))
-
-    # return
-    boa.env.set_storage(
-        addr,
-        Web3.to_int(storage_slot),
-        5000 * 10**18
-    )
-    print(en.balanceOf(trader))
-    print(boa.env.get_balance(trader))
-    assert en.balanceOf(trader) == 5000 * 10**18, "Trader did not get 'airdrop'"
-    return en
+    for x in range(0,100):
+        # print(x)
+        abi_encoded = eth_abi.encode(['address', 'uint256'], [trader, x])
+        storage_slot = Web3.solidity_keccak(["bytes"], ["0x" + abi_encoded.hex()])
+        boa.env.set_storage(
+            boa.util.abi.Address(addr).canonical_address,
+            Web3.to_int(storage_slot),
+            5000 * 10**18
+        )
+        print(x, en.balanceOf(trader))
+        if en.balanceOf(trader) == 5000 * 10**18:
+            return x
 
 def _pendleOracle(pendleMarket, _PENDLE_ORACLE):
     with open("contracts/vendor/PendlePtLpOracle.json") as f:
@@ -138,7 +130,14 @@ def pendle_pt(_pendle_pt):
         factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
         return factory.at(_pendle_pt)
 
-def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc, _PENDLE_ORACLE):
+def pendle_exchangerateoracle(exchangerateoracle):
+    with open("contracts/vendor/IPExchangeRateOracle.json") as f:
+        j = json.load(f)
+        factory = boa.loads_abi(json.dumps(j["abi"]), name="IPExchangeRateOracle")
+        return factory.at(exchangerateoracle)
+
+
+def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc, _PENDLE_ORACLE, oracle):
 
     pt = pendle_pt(_pendle_pt)
     pendleMarket = pendle_Market(_pendle_market)
@@ -190,18 +189,24 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
 
         #Get to  post maturity
         time_to_maturity = pendleMarket.expiry() - boa.env.evm.patch.timestamp
-        if time_to_maturity > 0:
-            boa.env.time_travel(seconds=time_to_maturity + 60)
+        assert time_to_maturity > 0, "maturity is not in future"
+        boa.env.time_travel(seconds=time_to_maturity + 60)
 
         assert boa.env.evm.patch.timestamp > pendleMarket.expiry()
+    with boa.env.prank(adaptervault.address):
+        adapter_assets = pendle_adapter.totalAssets()
+        adapter_pt = pt.balanceOf(adaptervault)
+        print("adapter_assets: ", adapter_assets)
+        print("adapter_pt: ", adapter_pt)
+        assert adapter_assets==adapter_pt, "PT should be pegged to assets post-maturity"
+
+    with boa.env.prank(trader):
         print(adaptervault.totalAssets())
         pt_bal_pre = pt.balanceOf(adaptervault)
         asset_bal_pre = asset.balanceOf(adaptervault)
         trader_bal_pre = asset.balanceOf(trader)
         assert adaptervault.balanceOf(trader) == adaptervault.convertToShares( adaptervault.convertToAssets(adaptervault.balanceOf(trader)))
-        # adaptervault.eval("self.vault_asset_balance_cache=0")
-        # adaptervault.eval("self.total_asset_balance_cache=0")
-        # adaptervault.eval("self.adapters_asset_balance_cache[" + pendle_adapter.address + "]=0")
+
         adaptervault.withdraw(
             adaptervault.convertToAssets(adaptervault.balanceOf(trader)),
             trader,
@@ -218,8 +223,10 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         vault_asset_gained = asset_bal_post - asset_bal_pre
         print("vault_asset_gained: ", vault_asset_gained)
         print("total gained: ", trader_asset_gained + vault_asset_gained)
+        normalized_assets = oracle(trader_asset_gained + vault_asset_gained)
+        print("normalized_assets: ", normalized_assets)
         #Theres always rounding issues somewhere...
-        assert pt_burned == pytest.approx(trader_asset_gained + vault_asset_gained), "withdraw was not pegged"
+        assert pt_burned == pytest.approx(normalized_assets), "withdraw was not pegged"
 
         #Lets try a deposit, it all should goto cash
         asset.approve(adaptervault, 1*10**18)
@@ -227,22 +234,35 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         assert asset.balanceOf(adaptervault) - asset_bal_post == pytest.approx(10**18), "asset not gained sufficiently"
         assert pt.balanceOf(adaptervault) - pt_bal_post == 0, "managed to deposit to PT post-maturity"
 
-
+def pegged_oracle(wrapped):
+    return wrapped
 
 def test_markets_ena(setup_chain, trader, deployer, funds_alloc):
-    #1. ENA on mainnet
+    #ENA on mainnet
     PENDLE_MARKET="0x9C73879F795CefA1D5239dE08d1B6Aba2D2d1434"
     ENA="0x57e114B691Db790C35207b2e685D4A43181e6061"
     PENDLE_PT="0x9946C55a34CD105f1e0CF815025EAEcff7356487"
-    ena = _ena(trader, ENA)
-    market_test(PENDLE_PT, ena, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE)
+    ena = _generic_erc20(trader, ENA, 2)
+    market_test(PENDLE_PT, ena, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, pegged_oracle)
 
 def test_markets_steth(setup_chain, trader, deployer, funds_alloc):
-    #2. stETH on mainnet
+    #stETH on mainnet
     PENDLE_MARKET="0xd0354d4e7bcf345fb117cabe41acadb724eccca2" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
     STETH="0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
     PENDLE_PT="0x7758896b6AC966BbABcf143eFA963030f17D3EdF"
-    steth = _steth(trader, STETH)
-    market_test(PENDLE_PT, steth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE)
+    steth = _generic_erc20(trader, STETH, 0)
+    market_test(PENDLE_PT, steth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, pegged_oracle)
 
 
+def test_markets_rseth(setup_chain, trader, deployer, funds_alloc):
+    #rsETH on mainnet
+    PENDLE_MARKET="0x4f43c77872Db6BA177c270986CD30c3381AF37Ee"
+    RSETH="0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7"
+    PENDLE_PT="0xB05cABCd99cf9a73b19805edefC5f67CA5d1895E"
+    # print(probe_token_slot(trader, RSETH))
+    orc = pendle_exchangerateoracle(0x7A05D25E91C478EFFd37Baf86730bB4B84bE1E32)
+    def exchange(wrapped):
+        rate = orc.getExchangeRate()
+        return (wrapped * rate) // 10**18
+    rseth = _generic_erc20(trader, RSETH, 51)
+    market_test(PENDLE_PT, rseth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
