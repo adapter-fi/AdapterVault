@@ -17,6 +17,7 @@ charset-normalizer==3.3.2
 chompjs==1.2.3
 ckzg==1.0.1
 click==8.1.7
+coverage==7.5.1
 cryptography==42.0.5
 cytoolz==0.12.3
 dataclassy==0.11.1
@@ -31,6 +32,7 @@ eth-keyfile==0.8.1
 eth-keys==0.5.1
 eth-pydantic-types==0.1.0
 eth-rlp==1.0.1
+eth-stdlib==0.2.7
 eth-tester==0.11.0b2
 eth-typing==3.5.2
 eth-utils==2.3.1
@@ -43,6 +45,7 @@ executing==2.0.1
 frozenlist==1.4.1
 greenlet==3.0.3
 hexbytes==0.3.1
+hypothesis==6.100.4
 idna==3.7
 ijson==3.2.3
 importlib_metadata==7.1.0
@@ -66,6 +69,7 @@ parsimonious==0.10.0
 parso==0.8.4
 pexpect==4.9.0
 pluggy==1.5.0
+plyvel==1.5.1
 prompt-toolkit==3.0.43
 protobuf==5.26.1
 ptyprocess==0.7.0
@@ -87,6 +91,7 @@ Pygments==2.17.2
 PyJWT==2.8.0
 PyNaCl==1.5.0
 pytest==7.4.4
+pytest-cov==5.0.0
 python-baseconv==1.2.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
@@ -106,12 +111,14 @@ sortedcontainers==2.4.0
 SQLAlchemy==2.0.29
 stack-data==0.6.3
 terminaltables==3.1.10
+titanoboa @ git+https://github.com/vyperlang/titanoboa@4eaa59e6c4d884e6280e0d970e566044271942a6
 tomli==2.0.1
 toolz==0.12.1
 tqdm==4.66.2
 traitlets==5.14.3
 trie==3.0.1
 typing_extensions==4.11.0
+ujson==5.9.0
 urllib3==2.2.1
 varint==1.0.2
 vvm==0.2.0
