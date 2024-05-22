@@ -615,7 +615,7 @@ def test_single_adapter_share_value_increase(project, deployer, adaptervault, ad
     cd4626_assets, cadapter_states, ctotal_assets, ctotal_ratios = adaptervault.getCurrentBalances(sender=trader).return_value
 
     current_local_asset_balance = dai.balanceOf(adaptervault)
-    adapters = funds_alloc.getBalanceTxs(current_local_asset_balance, max_withdrawl, 5, 0, ctotal_assets, ctotal_ratios, cadapter_states, sender=trader)   
+    adapters = funds_alloc.getBalanceTxs(current_local_asset_balance, max_withdrawl, 0, ctotal_assets, ctotal_ratios, cadapter_states, sender=trader)   
 
     print("adapters = %s." % [x for x in adapters])
 

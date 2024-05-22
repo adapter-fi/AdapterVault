@@ -203,7 +203,7 @@ def getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _to
 
 @internal
 @pure
-def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
     # _BDM TODO : max_txs is ignored for now.    
     adapter_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
@@ -224,5 +224,5 @@ def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _max
 
 @external
 @view
-def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
-    return self._getBalanceTxs(_vault_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only )
+def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
+    return self._getBalanceTxs(_vault_balance, _target_asset_balance, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only )

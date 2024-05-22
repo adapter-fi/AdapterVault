@@ -16,11 +16,10 @@ implements: ERC20
 
 interface FundsAllocator:
     def getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only: bool) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): pure
-    def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only: bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): pure
+    def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only: bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): pure
 
 # Number of potential lenging platform adapters.
 MAX_ADAPTERS : constant(uint256) = 5
-MAX_BALTX_DEPOSIT : constant(uint8) = 5 # MUST equal MAX_ADAPTERS for now. Ignored for now.
 
 MAX_SLIPPAGE_PERCENT : immutable(decimal)
 
@@ -169,7 +168,6 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     @param _funds_allocator contract address
     @param _max_slippage_percent default maximum acceptable slippage for deposits/withdraws as a percentage
     """
-    assert MAX_BALTX_DEPOSIT <= MAX_ADAPTERS, "Invalid contract pre-conditions."
     assert _governance != empty(address), "Governance cannot be null address."
     assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
     MAX_SLIPPAGE_PERCENT = _max_slippage_percent
@@ -376,7 +374,7 @@ def _remove_adapter(_adapter: address, pregen_info: DynArray[Bytes[4096], MAX_AD
 
     if _rebalance == True:
         initialVaultAssets : uint256 = self._totalAssetsCached()
-        self._balanceAdapters(0, pregen_info, False, convert(MAX_ADAPTERS, uint8))
+        self._balanceAdapters(0, pregen_info, False)
         if not _force:
             afterVaultAssets : uint256 = self._totalAssetsCached()
             if afterVaultAssets < initialVaultAssets:
@@ -1093,20 +1091,13 @@ def getCurrentBalances() -> (uint256, BalanceAdapter[MAX_ADAPTERS], uint256, uin
 
 @internal
 @view
-def _getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+def _getBalanceTxs(_target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
-    return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
-
-
-# @external
-# @view
-# def getBalanceTxs(_target_asset_balance: uint256, _max_txs: uint8, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
-#     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
-#     return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _max_txs, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+    return FundsAllocator(self.funds_allocator).getBalanceTxs(current_local_asset_balance, _target_asset_balance, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
 
 
 @internal
-def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool, _max_txs: uint8 = MAX_BALTX_DEPOSIT ) -> uint256:
+def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool ) -> uint256:
     # Make sure we have enough assets to send to _receiver.
     txs: BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters: address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
@@ -1121,7 +1112,7 @@ def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes
     total_ratios: uint256 = 0
     d4626_assets, adapter_states, total_assets, total_ratios = self._getCurrentBalances()
 
-    txs, blocked_adapters = self._getBalanceTxs(_target_asset_balance, _max_txs, self.min_proposer_payout, total_assets, total_ratios, adapter_states, _withdraw_only)
+    txs, blocked_adapters = self._getBalanceTxs(_target_asset_balance, self.min_proposer_payout, total_assets, total_ratios, adapter_states, _withdraw_only)
 
     # If there are blocked_adapters then set their strategy ratios to zero.
     for adapter in blocked_adapters:
@@ -1165,16 +1156,15 @@ def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes
 
 
 @external
-def balanceAdapters(_target_asset_balance: uint256, _withdraw_only : bool = False, _max_txs: uint8 = MAX_BALTX_DEPOSIT, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
+def balanceAdapters(_target_asset_balance: uint256, _withdraw_only : bool = False, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
     """
     @notice The function provides a way to balance adapters
     @dev   returns the actual balances of assets held in the local vault after balancing.
     @param _target_asset_balance Target amount for assets balance
-    @param _max_txs Maximum amount of adapters
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     """
     assert msg.sender == self.owner, "only owner can call balanceAdapters"
-    ret: uint256 = self._balanceAdapters(_target_asset_balance, pregen_info, _withdraw_only, _max_txs)
+    ret: uint256 = self._balanceAdapters(_target_asset_balance, pregen_info, _withdraw_only)
     self._dirtyAssetCache()
     return ret
 
