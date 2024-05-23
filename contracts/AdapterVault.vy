@@ -374,7 +374,8 @@ def _remove_adapter(_adapter: address, pregen_info: DynArray[Bytes[4096], MAX_AD
 
     if _rebalance == True:
         initialVaultAssets : uint256 = self._totalAssetsCached()
-        self._balanceAdapters(0, pregen_info, False)
+        # BDM - is zero the correct _min_assets parameter?
+        self._balanceAdapters(0, 0, pregen_info, False)
         if not _force:
             afterVaultAssets : uint256 = self._totalAssetsCached()
             if afterVaultAssets < initialVaultAssets:
@@ -701,7 +702,7 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
         # Need to liquidate some shares to fulfill. Insist on withdraw only semantics.
         # Note - there is a chance that balance adapters could return more than we asked for so
         #        don't just give it all away in case there's an overage.
-        fees_to_claim = min(self._balanceAdapters(fees_to_claim, pregen_info, True), fees_to_claim)
+        fees_to_claim = min(self._balanceAdapters(fees_to_claim, _min_assets, pregen_info, True), fees_to_claim)
         assert fees_to_claim >= min_fees_to_claim, "Couldn't get adequate assets into the vault to support fee request."
     else:
         fees_to_claim = min(_asset_amount, current_vault_assets)
@@ -1097,7 +1098,7 @@ def _getBalanceTxs(_target_asset_balance: uint256, _min_proposer_payout: uint256
 
 
 @internal
-def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool ) -> uint256:
+def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool ) -> uint256:
     # Make sure we have enough assets to send to _receiver.
     txs: BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters: address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
@@ -1111,6 +1112,11 @@ def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes
     total_assets: uint256 = 0
     total_ratios: uint256 = 0
     d4626_assets, adapter_states, total_assets, total_ratios = self._getCurrentBalances()
+
+    # BDM TODO - besides enforcing slippage limits on the funds ending up in the vault, should we
+    #            also enforce a default slippage limit on the overall value of the vault post re-balancing?
+
+    min_transfer_balance : uint256 = self._defaultSlippage(_target_asset_balance, _min_tasset_balance)
 
     txs, blocked_adapters = self._getBalanceTxs(_target_asset_balance, self.min_proposer_payout, total_assets, total_ratios, adapter_states, _withdraw_only)
 
@@ -1156,7 +1162,7 @@ def _balanceAdapters(_target_asset_balance: uint256, pregen_info: DynArray[Bytes
 
 
 @external
-def balanceAdapters(_target_asset_balance: uint256, _withdraw_only : bool = False, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
+def balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint256 = 0, _withdraw_only : bool = False, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
     """
     @notice The function provides a way to balance adapters
     @dev   returns the actual balances of assets held in the local vault after balancing.
@@ -1164,7 +1170,7 @@ def balanceAdapters(_target_asset_balance: uint256, _withdraw_only : bool = Fals
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     """
     assert msg.sender == self.owner, "only owner can call balanceAdapters"
-    ret: uint256 = self._balanceAdapters(_target_asset_balance, pregen_info, _withdraw_only)
+    ret: uint256 = self._balanceAdapters(_target_asset_balance, _min_tasset_balance, pregen_info, _withdraw_only)
     self._dirtyAssetCache()
     return ret
 
@@ -1291,7 +1297,8 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
     # It's our intention to move all funds into the lending adapters so 
     # our target balance is zero.
-    self._balanceAdapters(empty(uint256), pregen_info, False)
+    # BDM - how to deal with mins for deposit/shares?
+    self._balanceAdapters(empty(uint256), 0, pregen_info, False)
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
@@ -1355,7 +1362,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, prege
     log Transfer(_owner, empty(address), shares)
 
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
-    self._balanceAdapters(_asset_amount, pregen_info, True ) 
+    self._balanceAdapters(_asset_amount, _min_assets, pregen_info, True ) 
 
     # Now account for possible slippage.
     current_balance : uint256 = ERC20(asset).balanceOf(self)

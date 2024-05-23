@@ -208,7 +208,7 @@ def test_remove_adapter(project, deployer, adaptervault, adapter_adapterA, adapt
 
     print("HERE 3")
 
-    adaptervault.balanceAdapters(0, _max_txs = MAX_ADAPTERS, sender=deployer)
+    adaptervault.balanceAdapters(0, sender=deployer)
 
     print("HERE 4")
 
@@ -425,7 +425,7 @@ def test_multiple_adapter_balanceAdapters(project, deployer, adaptervault, adapt
     # Add a second adapter.
     _setup_single_adapter(project, adaptervault, deployer, dai, adapter_adapterB)
 
-    adaptervault.balanceAdapters(0, _max_txs = MAX_ADAPTERS, sender=deployer)
+    adaptervault.balanceAdapters(0, sender=deployer)
 
     d4626_assets, adapters, total_assets, total_ratios = adaptervault.getCurrentBalances(sender=trader).return_value
 
@@ -457,9 +457,9 @@ def test_multiple_adapter_balanceAdapters(project, deployer, adaptervault, adapt
     adaptervault.set_strategy(adaptervault.current_proposer(), strategy, adaptervault.min_proposer_payout(), sender=deployer)
 
     with ape.reverts("only owner can call balanceAdapters"):
-        adaptervault.balanceAdapters(0, _max_txs = MAX_ADAPTERS, sender=trader)
+        adaptervault.balanceAdapters(0, sender=trader)
 
-    adaptervault.balanceAdapters(0, _max_txs = MAX_ADAPTERS, sender=deployer)
+    adaptervault.balanceAdapters(0, sender=deployer)
 
     d4626_assets, adapters, total_assets, total_ratios = adaptervault.getCurrentBalances(sender=trader).return_value
 
@@ -490,7 +490,7 @@ def test_multiple_adapter_balanceAdapters(project, deployer, adaptervault, adapt
 
     adaptervault.set_strategy(adaptervault.current_proposer(), strategy, adaptervault.min_proposer_payout(), sender=deployer)
 
-    adaptervault.balanceAdapters(0, _max_txs = MAX_ADAPTERS, sender=deployer)
+    adaptervault.balanceAdapters(0, sender=deployer)
 
     d4626_assets, adapters, total_assets, total_ratios = adaptervault.getCurrentBalances(sender=trader).return_value
 
@@ -781,7 +781,7 @@ def test_single_adapter_brakes(project, deployer, adaptervault, adapter_adapterA
     # Add another adapter.
     _setup_single_adapter(project,adaptervault, deployer, dai, adapter_adapterB)
 
-    adaptervault.balanceAdapters(0, _max_txs = MAX_ADAPTERS, sender=deployer)
+    adaptervault.balanceAdapters(0, sender=deployer)
 
     d4626_assets, adapter_states, total_assets, total_ratios = adaptervault.getCurrentBalances(sender=trader).return_value
 
