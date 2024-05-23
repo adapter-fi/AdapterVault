@@ -5,10 +5,6 @@ init: check-node-version
 	pip install -r requirements.txt
 	npm ci
 
-test: check-node-version
-	ape test -s
-	ape test --network :mainnet-fork:hardhat -s
-
 check-env:
 ifndef WEB3_ALCHEMY_API_KEY
 	$(error WEB3_ALCHEMY_API_KEY is undefined)
@@ -28,6 +24,10 @@ endif
 
 hardhat: check-env check-node-version
 	npx hardhat node  --hostname 127.0.0.1 --port 8545 --fork https://eth-mainnet.g.alchemy.com/v2/${WEB3_ALCHEMY_API_KEY} --fork-block-number 17024800
+
+.PHONY: test
+test: check-env
+	pytest tests_boa/ --ignore tests_boa/test_transient.py
 
 
 abi-export:
