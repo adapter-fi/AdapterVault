@@ -20,7 +20,7 @@ jobs:
           python-version: '3.10'
           cache: 'pip' # caching pip dependencies
       - run: pip install -r requirements.txt
-      - run: mkdir -p $HOME/.cache
+      - run: mkdir -p $HOME/.cache/titanoboa/fork.db
       - run: make test
         env:
           WEB3_ALCHEMY_API_KEY: ${{ secrets.WEB3_ALCHEMY_API_KEY }}
