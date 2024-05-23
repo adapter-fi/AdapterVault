@@ -1145,7 +1145,7 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
 
             asset_amount : uint256 = ERC20(asset).balanceOf(self)
             if tx_qty > asset_amount:
-                min_transfer_balance : uint256 = self._defaultSlippage(tx_qty, 0)
+                min_transfer_balance = self._defaultSlippage(tx_qty, 0)
 
                 if asset_amount >= min_transfer_balance:
                     tx_qty = asset_amount
