@@ -20,6 +20,18 @@ jobs:
           python-version: '3.10'
           cache: 'pip' # caching pip dependencies
       - run: pip install -r requirements.txt
+      - name: get boa version
+        id: boa-version
+        #Just something that uniquely points to boa version
+        run: |
+          pip freeze | grep titanoboa | md5sum | awk '{print $1}' >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Cache RPC calls
+        id: cache-rpc
+        uses: actions/cache@v4
+        with:
+          path: $HOME/.cache/titanoboa/fork.db
+          key: boa-rpc-${{ runner.os }}-${{ steps.boa-version.outputs.date }}
       - run: mkdir -p $HOME/.cache/titanoboa/fork.db
       - run: make test
         env:
