@@ -24,7 +24,7 @@ jobs:
         id: boa-version
         #Just something that uniquely points to boa version
         run: |
-          pip freeze | grep titanoboa | md5sum | awk '{print $1}' >> $GITHUB_OUTPUT
+          pip freeze | grep titanoboa | md5sum | awk '{print $1}' | tr -d "\n" >> $GITHUB_OUTPUT
         shell: bash
       - name: Cache RPC calls
         id: cache-rpc
