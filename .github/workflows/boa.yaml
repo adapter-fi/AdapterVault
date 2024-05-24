@@ -24,14 +24,14 @@ jobs:
         id: boa-version
         #Just something that uniquely points to boa version
         run: |
-          pip freeze | grep titanoboa | md5sum | awk '{print $1}' | tr -d "\n" >> $GITHUB_OUTPUT
+          echo "version=$(pip freeze | grep titanoboa | md5sum | awk '{print $1}' | tr -d "\n")" >> $GITHUB_OUTPUT
         shell: bash
       - name: Cache RPC calls
         id: cache-rpc
         uses: actions/cache@v4
         with:
           path: $HOME/.cache/titanoboa/fork.db
-          key: boa-rpc-${{ runner.os }}-${{ steps.boa-version.outputs.date }}
+          key: boa-rpc-${{ runner.os }}-${{ steps.boa-version.outputs.version }}
       - run: mkdir -p $HOME/.cache/titanoboa/fork.db
       - run: make test
         env:
