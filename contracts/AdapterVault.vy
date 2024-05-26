@@ -1136,9 +1136,12 @@ def balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint256
     """
     assert msg.sender == self.owner, "only owner can call balanceAdapters"
 
-    # BDM - determine what default slippage should be if _min_tasset_balance isn't specified.
+    # Determine what default slippage should be if _min_tasset_balance isn't specified.
+    min_final_balance : uint256 = _min_tasset_balance
+    if min_final_balance == 0:
+        min_final_balance = self._defaultSlippage(self._vaultAssets())
 
-    ret: uint256 = self._balanceAdapters(_target_asset_balance, _min_tasset_balance, pregen_info, _withdraw_only)
+    ret: uint256 = self._balanceAdapters(_target_asset_balance, min_final_balance, pregen_info, _withdraw_only)
     self._dirtyAssetCache()
     return ret
 
@@ -1246,16 +1249,9 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
     total_starting_assets : uint256 = self._totalAssetsCached()
 
-    # MUST COMPUTE IDEAL SHARES FIRST!
-    ideal_shares : uint256 = self._convertToShares(_asset_amount, total_starting_assets)
-    transfer_shares : uint256 = ideal_shares
-    spot_share_price : decimal = convert(ideal_shares, decimal) / convert(_asset_amount, decimal)
-    # We'd like to do it this way but if there's an overall loss we might not be able to complete deposits later.
-    
-
-    # Compute minimum acceptable shares
-    min_transfer_shares : uint256 = self._defaultSlippage(transfer_shares, _min_shares)
-    assert transfer_shares >= min_transfer_shares, "Desired assets cannot be less than minimum assets!"
+    # MUST COMPUTE IDEAL TRANSFER SHARES FIRST!
+    transfer_shares : uint256 = self._convertToShares(_asset_amount, total_starting_assets)
+    spot_share_price : decimal = convert(transfer_shares, decimal) / convert(_asset_amount, decimal)
 
     # Move assets to this contract from caller in one go.
     ERC20(asset).transferFrom(msg.sender, self, _asset_amount)
@@ -1263,10 +1259,10 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
     # Clear the asset cache for vault but not adapters.
     self._dirtyAssetCache(True, False)
 
-    # It's our intention to move all funds into the lending adapters so 
-    # our target balance is zero.
-    # BDM - how to deal with mins for deposit/shares?
-    self._balanceAdapters(empty(uint256), 0, pregen_info, False)
+    min_transfer_shares : uint256 = self._defaultSlippage(transfer_shares, _min_shares)
+    new_min_assets : uint256 = self._convertToAssets(min_transfer_shares, self._totalAssetsCached())
+
+    self._balanceAdapters(empty(uint256), self._totalAssetsCached() + new_min_assets , pregen_info, False)
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
@@ -1277,7 +1273,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
         # We'll transfer what was received.
         transfer_shares = real_shares
-        log SlippageDeposit(msg.sender, _receiver, _asset_amount, ideal_shares, transfer_shares)
+        log SlippageDeposit(msg.sender, _receiver, _asset_amount, transfer_shares, transfer_shares)
 
     # Now mint assets to return to investor.    
     self._mint(_receiver, transfer_shares)
