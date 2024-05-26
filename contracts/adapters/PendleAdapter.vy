@@ -506,3 +506,10 @@ def generate_pregen_info(asset_amount: uint256) -> Bytes[4096]:
     pg.approx_params_swapExactTokenForPt.guessOffchain = pg.spot_returns
 
     return _abi_encode(pg)
+
+@external
+@view
+def managedTokens() -> DynArray[address, 10]:
+    ret: DynArray[address, 10] = empty(DynArray[address, 10])
+    ret.append(pt_token)
+    return ret
