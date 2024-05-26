@@ -1,0 +1,38 @@
+name: Boa tests
+
+on:
+  # Triggers the workflow on push request events on all branches
+  push:
+    branches:
+      - "**"
+  # Triggers the workflow on pull request events on all branches
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  boatest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip' # caching pip dependencies
+      - run: pip install -r requirements.txt
+      - name: get boa version
+        id: boa-version
+        #Just something that uniquely points to boa version
+        run: |
+          echo "version=$(pip freeze | grep titanoboa | md5sum | awk '{print $1}' | tr -d "\n")" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Cache RPC calls
+        id: cache-rpc
+        uses: actions/cache@v4
+        with:
+          path: $HOME/.cache/titanoboa/fork.db
+          key: boa-rpc-${{ runner.os }}-${{ steps.boa-version.outputs.version }}
+      - run: mkdir -p $HOME/.cache/titanoboa/fork.db
+      - run: make test
+        env:
+          WEB3_ALCHEMY_API_KEY: ${{ secrets.WEB3_ALCHEMY_API_KEY }}
