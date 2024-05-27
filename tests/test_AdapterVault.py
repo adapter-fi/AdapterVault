@@ -171,7 +171,7 @@ def test_remove_adapter(project, deployer, adaptervault, adapter_adapterA, adapt
     assert adapter_adapterA.totalAssets() == 0  
     assert adapter_adapterA in adaptervault.adapter_list()
 
-    assert adaptervault.try_total_assets(sender=trader).return_value == 0
+    assert adaptervault.totalAssetsCached(sender=trader).return_value == 0
 
     result = adaptervault.deposit(500, trader, sender=trader)
 
@@ -252,7 +252,7 @@ def test_single_adapter_deposit(project, deployer, adaptervault, adapter_adapter
     assert adaptervault.convertToShares(55) == 55
     assert adaptervault.convertToAssets(75) == 75
 
-    assert adaptervault.try_total_assets(sender=trader).return_value == 0
+    assert adaptervault.totalAssetsCached(sender=trader).return_value == 0
 
     result = adaptervault.deposit(500, trader, sender=trader)
     print("GAS USED FOR DEPOSIT = ", result.gas_used) 

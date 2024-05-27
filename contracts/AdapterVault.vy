@@ -524,7 +524,7 @@ def _totalAssetsCached() -> uint256:
 
 
 @external
-def try_total_assets() -> uint256:
+def totalAssetsCached() -> uint256:
     return self._totalAssetsCached()
 
 
@@ -547,7 +547,6 @@ def totalAssets() -> uint256:
     """
     return self._totalAssetsNoCache()
     
-
 
 @internal
 @view 
@@ -894,7 +893,7 @@ def mint(_share_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes
     @return Asset value of _share_amount
     """
     assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
-    minted: uint256 = self._deposit(assetqty, _receiver, pregen_info)
+    minted: uint256 = self._deposit(assetqty, _receiver, pregen_info, 0)
     self._dirtyAssetCache()
     return minted
 
@@ -1119,7 +1118,8 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
             qty: uint256 = convert(dtx.qty * -1, uint256)         
             assets_withdrawn : uint256 = self._adapter_withdraw(dtx.adapter, qty, self, pregen_info)
 
-    assert _min_tasset_balance <= self._totalAssetsCached(), "Slippage exceeded!"
+    final_asset_balance : uint256 = self._totalAssetsCached()
+    assert self._totalAssetsCached() >= _min_tasset_balance, "Slippage exceeded!"
 
     return self._vaultAssets()
 
@@ -1242,7 +1242,7 @@ def _adapter_withdraw(_adapter: address, _asset_amount: uint256, _withdraw_to: a
 
 
 @internal
-def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _min_shares : uint256 = 0) -> uint256:
+def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _min_shares : uint256) -> uint256:
     assert _receiver != empty(address), "Cannot send shares to zero address."
 
     assert _asset_amount <= ERC20(asset).balanceOf(msg.sender), "4626Deposit insufficient funds."
@@ -1264,7 +1264,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
     self._balanceAdapters(empty(uint256), self._totalAssetsCached() + new_min_assets , pregen_info, False)
 
-    total_after_assets : uint256 = self._totalAssetsCached()
+    total_after_assets : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
     real_shares : uint256 = convert(convert((total_after_assets - total_starting_assets), decimal) * spot_share_price, uint256)
 
