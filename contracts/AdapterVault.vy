@@ -6,7 +6,6 @@
 @license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
 @author BiggestLab (https://biggestlab.io) Benjamin Scherrey, Sajal Kayan
 """
-
 from vyper.interfaces import ERC20
 from vyper.interfaces import ERC4626
 from adapters.IAdapter import IAdapter as IAdapter
@@ -350,11 +349,15 @@ def add_adapter(_adapter: address) -> bool:
 
 @internal
 @pure
-def _defaultSlippage(_desiredAssets: uint256, _minAssets: uint256 = 0) -> uint256:
+def _defaultSlippage(_desiredAssets: uint256, _minAssets: uint256) -> uint256:
     min_transfer_balance : uint256 = _minAssets
     if _minAssets == 0:        
-        min_transfer_balance = _desiredAssets - convert(convert(_desiredAssets, decimal) * (MAX_SLIPPAGE_PERCENT/100.0), uint256)
+        calc : uint256 = convert(convert(_desiredAssets, decimal) * (MAX_SLIPPAGE_PERCENT/100.0), uint256)
+        min_transfer_balance = _desiredAssets - calc
     assert _desiredAssets >= min_transfer_balance, "Desired assets cannot be less than minimum assets!"
+    
+    #assert False, "DIE HERE TOO"
+
     return min_transfer_balance
 
 
@@ -1118,7 +1121,7 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
             qty: uint256 = convert(dtx.qty * -1, uint256)         
             assets_withdrawn : uint256 = self._adapter_withdraw(dtx.adapter, qty, self, pregen_info)
 
-    final_asset_balance : uint256 = self._totalAssetsCached()
+    final_asset_balance : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
     assert self._totalAssetsCached() >= _min_tasset_balance, "Slippage exceeded!"
 
     return self._vaultAssets()
@@ -1139,7 +1142,7 @@ def balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint256
     # Determine what default slippage should be if _min_tasset_balance isn't specified.
     min_final_balance : uint256 = _min_tasset_balance
     if min_final_balance == 0:
-        min_final_balance = self._defaultSlippage(self._vaultAssets())
+        min_final_balance = self._defaultSlippage(self._vaultAssets(), 0)
 
     ret: uint256 = self._balanceAdapters(_target_asset_balance, min_final_balance, pregen_info, _withdraw_only)
     self._dirtyAssetCache()
@@ -1252,6 +1255,8 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
     # MUST COMPUTE IDEAL TRANSFER SHARES FIRST!
     transfer_shares : uint256 = self._convertToShares(_asset_amount, total_starting_assets)
     spot_share_price : decimal = convert(transfer_shares, decimal) / convert(_asset_amount, decimal)
+    # BDM
+    visible_price : uint256 = convert(spot_share_price * 100.0, uint256)
 
     # Move assets to this contract from caller in one go.
     ERC20(asset).transferFrom(msg.sender, self, _asset_amount)
@@ -1261,6 +1266,8 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
 
     min_transfer_shares : uint256 = self._defaultSlippage(transfer_shares, _min_shares)
     new_min_assets : uint256 = self._convertToAssets(min_transfer_shares, self._totalAssetsCached())
+
+    assert False, "DIE HERE!"
 
     self._balanceAdapters(empty(uint256), self._totalAssetsCached() + new_min_assets , pregen_info, False)
 

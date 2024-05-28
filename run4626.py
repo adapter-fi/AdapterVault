@@ -1,5 +1,8 @@
 import boa
 from decimal import Decimal
+#from titanoboa.debug import breakpoint
+
+
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 MAX_ADAPTERS = 5 # Must match the value from AdapterVault.vy
@@ -38,6 +41,11 @@ with boa.env.prank(owner):
 
 assert dai.balanceOf(vault) == 20000
 
+# We have to do this to deal with the false ownership issue
+# in the mocklp adapter.
+with boa.env.prank(adapt_junk.address):
+	dai.approve(vault.address,1000000000)
+
 with boa.env.prank(owner):
 	vault.balanceAdapters(10)	
 	vault.balanceAdapters(42)
@@ -47,6 +55,9 @@ with boa.env.prank(owner):
 assert dai.balanceOf(vault) == 10
 assert dai.balanceOf(adapt_junk) == 19990
 
-#with boa.env.prank(trader):
-#	vault.deposit(1000, trader)
+assert vault.totalAssets() == 20000
+
+with boa.env.prank(trader):
+	dai.approve(vault.address,1000)
+	vault.deposit(1000, trader, 1000)
 
