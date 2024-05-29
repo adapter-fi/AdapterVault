@@ -1072,6 +1072,8 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
     txs: BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters: address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
 
+    min_total_asset_balance : uint256 = _min_tasset_balance
+
     # If there are no adapters then nothing to do.
     if len(self.adapters) == 0: return ERC20(asset).balanceOf(self)
 
@@ -1094,7 +1096,7 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
         new_strat_asset_value : uint256 = self._adapterAssets(adapter)
 
         # Adjust minimum acceptable balances downwards because this is not a slippage loss.
-        _min_tasset_balance -= (new_strat.last_asset_value - new_strat_asset_value)
+        min_total_asset_balance -= (new_strat.last_asset_value - new_strat_asset_value)
 
         log AdapterLoss(adapter, new_strat.last_asset_value, new_strat_asset_value)
 
@@ -1120,7 +1122,11 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
             assets_withdrawn : uint256 = self._adapter_withdraw(dtx.adapter, qty, self, pregen_info)
 
     final_asset_balance : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
-    assert self._totalAssetsCached() >= _min_tasset_balance, "Slippage exceeded!"
+
+    #if True:
+    #    raise  # dev: fail
+
+    assert self._totalAssetsCached() >= min_total_asset_balance, "Slippage exceeded!"
 
     return self._vaultAssets()
 
@@ -1266,7 +1272,8 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     new_min_assets : uint256 = self._convertToAssets(min_transfer_shares, self._totalAssetsCached())
 
     #breakpoint()
-    assert False, "DIE HERE!"
+    #if True:
+    #    raise  # dev: fail
 
     self._balanceAdapters(empty(uint256), self._totalAssetsCached() + new_min_assets , pregen_info, False)
 
