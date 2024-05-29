@@ -956,7 +956,7 @@ def redeem(_share_amount: uint256, _receiver: address, _owner: address, pregen_i
     """
     assetqty: uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
     # NOTE - this is accepting the MAX_SLIPPAGE_PERCENT % slippage default.
-    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, pregen_info, 0)
+    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
     self._dirtyAssetCache()
     return withdrawn
 
@@ -1279,9 +1279,9 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     #if True:
     #    raise  # dev: fail
 
-    self._balanceAdapters(empty(uint256), new_min_assets , pregen_info, False)
+    self._balanceAdapters(empty(uint256), new_min_assets, pregen_info, False)
 
-    total_after_assets : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
+    total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
     real_shares : uint256 = convert(convert((total_after_assets - total_starting_assets), decimal) * spot_share_price, uint256)
 
@@ -1322,7 +1322,7 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
 
 
 @internal
-def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _min_assets: uint256 = 0) -> uint256:
+def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
     min_transfer_balance : uint256 = self._defaultSlippage(_asset_amount, _min_assets)
 
     # How many shares does it take to get the requested asset amount?
@@ -1383,7 +1383,7 @@ def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_ass
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount withdrawn to receiver
     """
-    result : uint256 = self._withdraw(_asset_amount,_receiver,_owner, pregen_info, _min_assets)
+    result : uint256 = self._withdraw(_asset_amount, _receiver, _owner, _min_assets, pregen_info)
     self._dirtyAssetCache()
     return result
 
