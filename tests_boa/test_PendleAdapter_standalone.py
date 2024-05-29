@@ -164,7 +164,7 @@ def test_pendle_adapter_standalone(pendle_adapter, pt, steth, pendleRouter, trad
         assert pendle_adapter.maxWithdraw() == total_assets, "max withdraw must equal total assets"
 
 
-def test_pendle_adapter_mint(project, pendle_adapter,  pt, steth, pendleRouter, trader):
+def test_pendle_adapter_mint(pendle_adapter,  pt, steth, pendleRouter, trader):
     with boa.env.prank(trader):
         #Trader direct mint 1 stETH
         steth.transfer(pendle_adapter, 1*10**18)
