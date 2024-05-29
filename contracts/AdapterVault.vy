@@ -1059,6 +1059,37 @@ def getCurrentBalances() -> (uint256, BalanceAdapter[MAX_ADAPTERS], uint256, uin
     return current_local_asset_balance, adapter_balances, total_balance, total_ratios
 
 
+# @external
+# @view
+# def getTargetBalances(_d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+#     """
+#     @dev    Returns: 
+#             1) uint256 - the total asset allocation across all adapters (less _d4626_asset_target),
+#             2) int256 - the total delta of local d4626 assets that would be moved across
+#             all transactions, 
+#             3) uint256 - the total number of planned txs to achieve these targets,
+#             4) BalanceAdapter[MAX_ADAPTERS] - the updated list of transactions required to
+#             meet the target goals sorted in ascending order of BalanceAdapter.delta.
+#             5) A list of any adapters that should be blocked because they lost funds.
+
+#     @param  _d4626_asset_target minimum asset target goal to be made available
+#             for withdraw from the 4626 contract.
+
+#     @param  _total_assets the sum of all assets held by the d4626 plus all of
+#             its adapter adapters.
+
+#     @param _total_ratios the total of all BalanceAdapter.ratio values in _adapter_balances.
+
+#     @param _adapter_balances current state of the adapter adapters. BDM TODO Specify TYPES!
+
+#     @param _min_outgoing_tx the minimum size of a tx depositing funds to an adapter (as set by the current strategy).
+
+#     """    
+#     current_local_asset_balance : uint256 = ERC20(asset).balanceOf(self)
+
+#     return FundsAllocator(self.funds_allocator).getTargetBalances(current_local_asset_balance, _d4626_asset_target, _total_assets, _total_ratios, _adapter_balances, _min_outgoing_tx, _withdraw_only)
+
+
 @internal
 @view
 def _getBalanceTxs(_target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
@@ -1082,6 +1113,11 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
     total_ratios: uint256 = 0
     d4626_assets, adapter_states, total_assets, total_ratios = self._getCurrentBalances()
 
+    # BDM TODO - besides enforcing slippage limits on the funds ending up in the vault, should we
+    #            also enforce a default slippage limit on the overall value of the vault post re-balancing?
+
+    min_transfer_balance : uint256 = self._defaultSlippage(_target_asset_balance, _min_tasset_balance)
+
     txs, blocked_adapters = self._getBalanceTxs(_target_asset_balance, self.min_proposer_payout, total_assets, total_ratios, adapter_states, _withdraw_only)
 
     # If there are blocked_adapters then set their strategy ratios to zero.
@@ -1091,12 +1127,8 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
         new_strat : AdapterValue = self.strategy[adapter]
         new_strat.ratio = 0
         self.strategy[adapter] = new_strat
-        new_strat_asset_value : uint256 = self._adapterAssets(adapter)
 
-        # Adjust minimum acceptable balances downwards because this is not a slippage loss.
-        _min_tasset_balance -= (new_strat.last_asset_value - new_strat_asset_value)
-
-        log AdapterLoss(adapter, new_strat.last_asset_value, new_strat_asset_value)
+        log AdapterLoss(adapter, new_strat.last_asset_value, self._adapterAssets(adapter))
 
     # Move the funds in/out of Lending Adapters as required.
     for dtx in txs:
@@ -1104,40 +1136,40 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
         if dtx.qty == 0: continue
 
         # If the outgoing tx is larger than the min_proposer_payout then do it, otherwise ignore it.
-        if dtx.qty >= convert(self.min_proposer_payout, int256):
+        if dtx.qty > 0 and dtx.qty >= convert(self.min_proposer_payout, int256):
             # Move funds into the lending adapter's adapter.
 
-            # It's possible due to slippage we may not have enough assets in the vault to
-            # fulfill the entire deposit transfer.
-            deposit_qty : uint256 = min(convert(dtx.qty, uint256), self._vaultAssets())
+            # Account for the possibility that slippage occurred in a prior tx withdraw
+            # from another adapter so it's possible the vault is a little short.
+            tx_qty : uint256 = convert(dtx.qty, uint256)
 
-            self._adapter_deposit(dtx.adapter, deposit_qty, pregen_info)
+            asset_amount : uint256 = ERC20(asset).balanceOf(self)
+            if tx_qty > asset_amount:
+                min_transfer_balance = self._defaultSlippage(tx_qty, 0)
 
-        # Negative quanties indicate a withdraw from the adapter into the vault.
+                if asset_amount >= min_transfer_balance:
+                    tx_qty = asset_amount
+
+            assert ERC20(asset).balanceOf(self) >= tx_qty, "_balanceAdapters d4626 insufficient assets!"
+            self._adapter_deposit(dtx.adapter, tx_qty, pregen_info)
+
         elif dtx.qty < 0:
             # Liquidate funds from lending adapter's adapter.
             qty: uint256 = convert(dtx.qty * -1, uint256)         
             assets_withdrawn : uint256 = self._adapter_withdraw(dtx.adapter, qty, self, pregen_info)
 
-    assert _min_tasset_balance <= self._totalAssetsCached(), "Slippage exceeded!"
-
-    return self._vaultAssets()
+    return ERC20(asset).balanceOf(self)
 
 
 @external
 def balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint256 = 0, _withdraw_only : bool = False, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256:
     """
     @notice The function provides a way to balance adapters
-    @dev   returns the actual balances of assets held in the local vault (not including adapters) after balancing.
-    @param _target_asset_balance Target amount for assets balance in vault (not including adapters).
-    @param _min_tasset_balance Minimum total assets (including adapters) post transaction accounting for slippage.
-    @param _withdraw_only If true no funds will move from vault into adapters during this tx.
+    @dev   returns the actual balances of assets held in the local vault after balancing.
+    @param _target_asset_balance Target amount for assets balance
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     """
     assert msg.sender == self.owner, "only owner can call balanceAdapters"
-
-    # BDM - determine what default slippage should be if _min_tasset_balance isn't specified.
-
     ret: uint256 = self._balanceAdapters(_target_asset_balance, _min_tasset_balance, pregen_info, _withdraw_only)
     self._dirtyAssetCache()
     return ret
@@ -1209,7 +1241,7 @@ def _adapter_withdraw(_adapter: address, _asset_amount: uint256, _withdraw_to: a
 
     if _force:
 
-        # For revert_on_failure = True
+        # For revery_on_failure = True
         result_ok, response = raw_call(
             _adapter,
             _abi_encode(_asset_amount, _withdraw_to, pregen_info, method_id=method_id("withdraw(uint256,address,bytes)")),
