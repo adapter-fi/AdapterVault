@@ -1,11 +1,4 @@
-#These are unfrozen requirements to bootstrap the env
-git+https://github.com/BiggestLab/ape.git@v0.7.18-fork
-ape-alchemy
-ape-hardhat
-ape-vyper
-ape-hardhat
-terminaltables
-#re:https://github.com/vyperlang/titanoboa/issues/193
-git+https://github.com/vyperlang/titanoboa#egg=titanoboa[forking-recommended]
+git+https://github.com/vyperlang/titanoboa@a06e134b25c8206cb4d6d76521e6705111e92c68#egg=titanoboa[forking-recommended]
 plyvel
 ujson
+venv-run
