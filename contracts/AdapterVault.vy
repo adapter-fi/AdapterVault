@@ -1271,7 +1271,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     min_transfer_shares : uint256 = self._defaultSlippage(transfer_shares, _min_shares)
     new_min_assets : uint256 = self._convertToAssets(min_transfer_shares, self._totalAssetsCached())
 
-    #breakpoint()
+    breakpoint()
     #if True:
     #    raise  # dev: fail
 
