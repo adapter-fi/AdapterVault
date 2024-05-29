@@ -356,8 +356,6 @@ def _defaultSlippage(_desiredAssets: uint256, _minAssets: uint256) -> uint256:
         min_transfer_balance = _desiredAssets - calc
     assert _desiredAssets >= min_transfer_balance, "Desired assets cannot be less than minimum assets!"
     
-    #assert False, "DIE HERE TOO"
-
     return min_transfer_balance
 
 
@@ -896,7 +894,7 @@ def mint(_share_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes
     @return Asset value of _share_amount
     """
     assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
-    minted: uint256 = self._deposit(assetqty, _receiver, pregen_info, 0)
+    minted: uint256 = self._deposit(assetqty, _receiver, 0, pregen_info)
     self._dirtyAssetCache()
     return minted
 
@@ -1245,7 +1243,7 @@ def _adapter_withdraw(_adapter: address, _asset_amount: uint256, _withdraw_to: a
 
 
 @internal
-def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _min_shares : uint256) -> uint256:
+def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
     assert _receiver != empty(address), "Cannot send shares to zero address."
 
     assert _asset_amount <= ERC20(asset).balanceOf(msg.sender), "4626Deposit insufficient funds."
@@ -1267,6 +1265,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, pregen_info: DynArray[B
     min_transfer_shares : uint256 = self._defaultSlippage(transfer_shares, _min_shares)
     new_min_assets : uint256 = self._convertToAssets(min_transfer_shares, self._totalAssetsCached())
 
+    #breakpoint()
     assert False, "DIE HERE!"
 
     self._balanceAdapters(empty(uint256), self._totalAssetsCached() + new_min_assets , pregen_info, False)
@@ -1303,7 +1302,7 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount deposited to receiver
     """
-    result : uint256 = self._deposit(_asset_amount, _receiver, pregen_info, _min_shares)
+    result : uint256 = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
     self._dirtyAssetCache()
     return result
 
