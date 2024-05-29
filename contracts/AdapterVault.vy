@@ -1123,8 +1123,7 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
 
     final_asset_balance : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
 
-    #if True:
-    #    raise  # dev: fail
+    # breakpoint()
 
     assert self._totalAssetsCached() >= min_total_asset_balance, "Slippage exceeded!"
 
@@ -1269,17 +1268,24 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     self._dirtyAssetCache(True, False)
 
     min_transfer_shares : uint256 = self._defaultSlippage(transfer_shares, _min_shares)
-    new_min_assets : uint256 = self._convertToAssets(min_transfer_shares, self._totalAssetsCached())
 
-    breakpoint()
+    # Determine the percentage slippage allowed for shares and then apply that to assets as a ratio.
+    new_min_assets : uint256 = total_starting_assets + _asset_amount
+    if transfer_shares > min_transfer_shares:
+        share_slippage : decimal = convert(transfer_shares - min_transfer_shares, decimal)/convert(transfer_shares,decimal)    
+        new_min_assets = new_min_assets - convert(convert(new_min_assets, decimal) * share_slippage, uint256)
+
+    #breakpoint()
     #if True:
     #    raise  # dev: fail
 
-    self._balanceAdapters(empty(uint256), self._totalAssetsCached() + new_min_assets , pregen_info, False)
+    self._balanceAdapters(empty(uint256), new_min_assets , pregen_info, False)
 
     total_after_assets : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
     real_shares : uint256 = convert(convert((total_after_assets - total_starting_assets), decimal) * spot_share_price, uint256)
+
+    #breakpoint()
 
     if real_shares < transfer_shares:
         assert real_shares >= min_transfer_shares, "ERROR - unable to meet minimum slippage for this deposit!"

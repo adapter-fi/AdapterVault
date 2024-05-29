@@ -59,5 +59,5 @@ assert vault.totalAssets() == 20000
 
 with boa.env.prank(trader):
 	dai.approve(vault.address,1000)
-	vault.deposit(1000, trader, 1000)
+	vault.deposit(1000, trader) #, 1000)
 
