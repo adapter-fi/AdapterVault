@@ -389,29 +389,29 @@ def _remove_adapter(_adapter: address, pregen_info: DynArray[Bytes[4096], MAX_AD
     # Determine acceptable slippage.
     adapter_assets : uint256 = self._adapterAssets(_adapter)
     min_transfer_balance : uint256 = self._defaultSlippage(adapter_assets, _min_assets)
+    max_loss : uint256 = adapter_assets - min_transfer_balance
 
     # Clear out any strategy ratio this adapter may have.
     self.strategy[_adapter].ratio = 0
 
-    # if _rebalance == True:
-    #     initialVaultAssets : uint256 = self._totalAssetsCached()
-    #     # BDM - is zero the correct _min_assets parameter?
-    #     self._balanceAdapters(0, 0, pregen_info, False)
-    #     if not _force:
-    #         afterVaultAssets : uint256 = self._totalAssetsCached()
-    #         if afterVaultAssets < initialVaultAssets:
-    #             # We've taken some loss across the balancing transactions.
-    #             loss : uint256 = initialVaultAssets - afterVaultAssets
-    #             assert adapter_assets >= loss, "ERROR - loss was greater than adapter assets. Try to remove without rebalancing."
-    #             assert min_transfer_balance >= adapter_assets - loss, "ERROR - too much slippage removing adapter. Try to remove without rebalancing."
-    # else:
-    if adapter_assets > 0:
-        assets_withdrawn : uint256 = self._adapter_withdraw(_adapter, adapter_assets, self, pregen_info, _force)
+    if _rebalance == True:
+        initialVaultAssets : uint256 = self._totalAssetsCached()
+        self._balanceAdapters(0, max_loss, pregen_info, False)
         if not _force:
-            # If force semantics was chosen it means the contract owner is willing to leave any assets
-            # behind in this adapter because it isn't behaving properly and we urgently need it gone.
-            assert self._adapterAssets(_adapter) == 0, "ERROR - adapter adapter to be removed still has assets!"
-            assert min_transfer_balance <= assets_withdrawn, "ERROR - too much slippage on adapter withdraw."
+            afterVaultAssets : uint256 = self._totalAssetsCached()
+            if afterVaultAssets < initialVaultAssets:
+                # We've taken some loss across the balancing transactions.
+                loss : uint256 = initialVaultAssets - afterVaultAssets
+                assert adapter_assets >= loss, "ERROR - loss was greater than adapter assets. Try to remove without rebalancing."
+                assert max_loss >= loss, "ERROR - too much slippage removing adapter. Try to remove without rebalancing."
+    else:
+        if adapter_assets > 0:
+            assets_withdrawn : uint256 = self._adapter_withdraw(_adapter, adapter_assets, self, pregen_info, _force)
+            if not _force:
+                # If force semantics was chosen it means the contract owner is willing to leave any assets
+                # behind in this adapter because it isn't behaving properly and we urgently need it gone.
+                assert self._adapterAssets(_adapter) == 0, "ERROR - adapter adapter to be removed still has assets!"
+                assert min_transfer_balance <= assets_withdrawn, "ERROR - too much slippage on adapter withdraw."
 
     # Walk over the list of adapters and get rid of this one.
     new_adapters : DynArray[address, MAX_ADAPTERS] = empty(DynArray[address, MAX_ADAPTERS])
@@ -432,6 +432,8 @@ def remove_adapter(_adapter: address, _rebalance: bool = True, _force: bool = Fa
     @notice removes Adapter adapter from the 4626 vault.
     @param _adapter address to be removed 
     @param _rebalance if True will empty adapter before removal.
+    @param _force causes adapter to be removed despite any slippage.
+    @param _min_assets the minimum amount of assets that should be recovered from the adapter.
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return True if adapter was removed, False otherwise
     """

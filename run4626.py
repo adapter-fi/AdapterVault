@@ -77,7 +77,9 @@ with boa.env.prank(adapt_junk.address):
 	print("vault balance = ", vault.totalAssets())
 
 with boa.env.prank(trader):
-	vault.withdraw(300, trader, trader)
+	#vault.withdraw(300, trader, trader)
+	dai.approve(vault.address,100)
+	vault.deposit(100, trader)
 	dai.approve(vault.address,100)
 	vault.deposit(100, trader)
 	print("vault balance = ", vault.totalAssets())
