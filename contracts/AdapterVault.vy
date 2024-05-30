@@ -1138,8 +1138,8 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
 
     final_asset_balance : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
 
-    if self._totalAssetsCached() < min_total_asset_balance:
-        breakpoint()
+    #if self._totalAssetsCached() < min_total_asset_balance:
+    #    breakpoint()
 
     assert self._totalAssetsCached() >= min_total_asset_balance, "Slippage exceeded!"
 
@@ -1336,14 +1336,13 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     return result
 
 
-
 @internal
 def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
-    min_transfer_balance : uint256 = self._defaultSlippage(_asset_amount, _min_assets)
+    #min_transfer_balance : uint256 = self._defaultSlippage(_asset_amount, _min_assets)
 
     # How many shares does it take to get the requested asset amount?
     shares: uint256 = self._convertToShares(_asset_amount, self._totalAssetsCached())
-    xcbal : uint256 = self.balanceOf[_owner]
+    #xcbal : uint256 = self.balanceOf[_owner]
 
     # Owner has adequate shares?
     assert self.balanceOf[_owner] >= shares, "Owner has inadequate shares for this withdraw."
@@ -1361,31 +1360,33 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
     log Transfer(_owner, empty(address), shares)
 
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
-    assert _asset_amount >= _min_assets, "MIN MESSED UP"
+    #assert _asset_amount >= min_transfer_balance, "MIN MESSED UP"
     min_total_assets_after_rebalance : uint256 = self._slippageAllowedBalance(_asset_amount, _min_assets)
 
     current_balance : uint256 = self._balanceAdapters(_asset_amount, min_total_assets_after_rebalance, pregen_info, True ) 
 
     # Now account for possible slippage.
-    transfer_balance : uint256 = _asset_amount
-    if transfer_balance > current_balance:
-        # Didn't get as much as we expected. Is it above the minimum?
-        assert transfer_balance >= min_transfer_balance, "ERROR - Unable to meet minimum slippage requested for this withdraw."
+    # transfer_balance : uint256 = _asset_amount
+    # if transfer_balance > current_balance:
+    #     # Didn't get as much as we expected. Is it above the minimum?
+    #     assert transfer_balance >= min_transfer_balance, "ERROR - Unable to meet minimum slippage requested for this withdraw."
 
-        # We'll transfer what we received.
-        transfer_balance = current_balance
-        log SlippageWithdraw(msg.sender, _receiver, _owner, _asset_amount, shares, transfer_balance)
+    #     # We'll transfer what we received.
+    #     transfer_balance = current_balance
+    if _asset_amount > current_balance:
+        log SlippageWithdraw(msg.sender, _receiver, _owner, _asset_amount, shares, current_balance)
+        _asset_amount = current_balance
 
     # Now send assets to _receiver.
-    ERC20(asset).transfer(_receiver, transfer_balance)
+    ERC20(asset).transfer(_receiver, _asset_amount)
 
     # Clear the asset cache for vault but not adapters.
     self._dirtyAssetCache(True, False)
 
     # Update all-time assets withdrawn for yield tracking.
-    self.total_assets_withdrawn += transfer_balance
+    self.total_assets_withdrawn += _asset_amount
 
-    log Withdraw(msg.sender, _receiver, _owner, transfer_balance, shares)
+    log Withdraw(msg.sender, _receiver, _owner, _asset_amount, shares)
 
     return shares
 
