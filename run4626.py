@@ -1,7 +1,12 @@
 import boa
+import math
 from decimal import Decimal
 #from titanoboa.debug import breakpoint
 
+#alchemy_key = 'rmrr6rVlDSKKSZB5Npk2As2VZDwcU60s'
+#block_id=19850000
+#fork_uri="https://eth-mainnet.g.alchemy.com/v2/" + alchemy_key
+#boa.env.fork(fork_uri, block_identifier=block_id)
 
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -62,4 +67,17 @@ with boa.env.prank(trader):
 	vault.deposit(1000, trader) #, 1000)
 
 	vault.withdraw(500, trader, trader)
+
+current_assets = vault.totalAssets()
+steal = int(math.ceil(current_assets * .07))	# Steal 7% of the assets.
+print("vault balance = ", vault.totalAssets(), "but stealing ", steal)	
 	
+with boa.env.prank(adapt_junk.address):
+	dai.transfer(owner,steal)
+	print("vault balance = ", vault.totalAssets())
+
+with boa.env.prank(trader):
+	dai.approve(vault.address,100)
+	vault.deposit(100, trader)
+	print("vault balance = ", vault.totalAssets())
+	vault.withdraw(300, trader, trader)	

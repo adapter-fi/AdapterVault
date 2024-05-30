@@ -1363,7 +1363,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
     assert _asset_amount >= _min_assets, "MIN MESSED UP"
     min_total_assets_after_rebalance : uint256 = self._slippageAllowedBalance(_asset_amount, _min_assets)
-    #breakpoint()
+
     current_balance : uint256 = self._balanceAdapters(_asset_amount, min_total_assets_after_rebalance, pregen_info, True ) 
 
     # Now account for possible slippage.
