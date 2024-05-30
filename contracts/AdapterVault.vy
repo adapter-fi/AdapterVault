@@ -46,6 +46,7 @@ owner: public(address)
 governance: public(address)
 funds_allocator: public(address)
 adapters : public(DynArray[address, MAX_ADAPTERS])
+managed_tokens: HashMap[address, address] #mapping between token to adapter
 
 vault_asset_balance_cache: transient(uint256)
 adapters_asset_balance_cache: transient(HashMap[address, uint256])
@@ -331,6 +332,8 @@ def _add_adapter(_adapter: address) -> bool:
 
     self.adapters.append(_adapter)
 
+    self._manage_adapter(_adapter, 0x0000000000000000000000000000000000000000)
+
     log AdapterAdded(msg.sender, _adapter)
 
     return True
@@ -399,6 +402,8 @@ def _remove_adapter(_adapter: address, pregen_info: DynArray[Bytes[4096], MAX_AD
             new_adapters.append(adapter)
 
     self.adapters = new_adapters            
+    #UnLock adapter's tokens
+    self._manage_adapter(0x0000000000000000000000000000000000000000, _adapter)
 
     log AdapterRemoved(msg.sender, _adapter, self._adapterAssets(_adapter), _force)
 
@@ -454,6 +459,9 @@ def _swap_adapters(_adapterOld: address, _adapterNew: address, _force: bool = Fa
     self.strategy[_adapterNew].ratio = self.strategy[_adapterOld].ratio
     self.strategy[_adapterNew].last_asset_value = NewAssets
     self.strategy[_adapterOld] = empty(AdapterValue)
+
+    #Transfer adapter's tokens locks
+    self._manage_adapter(_adapterNew, _adapterOld)
 
     log AdapterRemoved(msg.sender, _adapterOld, self._adapterAssets(_adapterOld), _force)
     log AdapterAdded(msg.sender, _adapterNew)
@@ -1482,3 +1490,25 @@ def claimRewards(_adapter: address, reciepent: address):
         is_delegate_call=True,
         revert_on_failure=True
     )
+
+@internal
+def _manage_adapter(incoming_adapter: address, outgoing_adapter: address):
+    #If there is an incoming adapter, take an exclusive lock, ensuring nobody (aside from possibly outgoing_adapter) has it locked.
+    if incoming_adapter != 0x0000000000000000000000000000000000000000:
+        #Update managed_tokens, while ensuring unique token lock
+        incoming_handled: DynArray[address, 10] = IAdapter(incoming_adapter).managed_tokens()
+        for token in incoming_handled:
+            old: address = self.managed_tokens[token]
+            assert old==outgoing_adapter, "incoming token already handled"
+            self.managed_tokens[token] = incoming_adapter
+    #In case of adapter removal... ensure all its magaged tokens are either transfered to new adapter or are released
+    if outgoing_adapter != 0x0000000000000000000000000000000000000000:
+        outgoing_handled: DynArray[address, 10] = IAdapter(outgoing_adapter).managed_tokens()
+        for token in outgoing_handled:
+            old: address = self.managed_tokens[token]
+            if incoming_adapter == 0x0000000000000000000000000000000000000000:
+                assert old == outgoing_adapter, "outgoing token already handled"
+                self.managed_tokens[token] = 0x0000000000000000000000000000000000000000
+            else:
+                #ensures all old adapters tokens have been consumed by the new
+                assert old == incoming_adapter, "outgoing token already handled"
