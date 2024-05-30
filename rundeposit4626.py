@@ -40,40 +40,19 @@ with boa.env.prank(gov.address):
 
 with boa.env.prank(owner):
     dai.mint(owner, 1000000)
-    dai.transfer(vault,20000)
-
     dai.transfer(trader, 100000)
-
-assert dai.balanceOf(vault) == 20000
 
 # We have to do this to deal with the false ownership issue
 # in the mocklp adapter.
 with boa.env.prank(adapt_junk.address):
     dai.approve(vault.address,1000000000)
 
-with boa.env.prank(owner):
-    vault.balanceAdapters(10)
-    vault.balanceAdapters(42)
-    vault.balanceAdapters(10)
-
-
-assert dai.balanceOf(vault) == 10
-assert dai.balanceOf(adapt_junk) == 19990
-
-assert vault.totalAssets() == 20000
-
-with boa.env.prank(owner):
-    print("vault before balance = ", vault.totalAssets())
-    print("removing owner balance: ", vault.balanceOf(owner))
-    vault.withdraw(vault.balanceOf(owner), owner, owner)
-    print("vault after balance = ", vault.totalAssets())
-
 with boa.env.prank(trader):
-    print("vault before balance = ", vault.totalAssets())
-    print("removing trader balance: ", vault.balanceOf(trader))
-    vault.withdraw(vault.balanceOf(trader), trader, trader)
-    print("vault balance = ", vault.totalAssets())
-    dai.approve(vault.address,1000)
+    # print("vault before balance = ", vault.totalAssets())
+    # print("removing trader balance: ", vault.balanceOf(trader))
+    # vault.withdraw(vault.balanceOf(trader), trader, trader)
+    # print("vault balance = ", vault.totalAssets())
+    dai.approve(vault.address,5000)
     vault.deposit(1000, trader) #, 1000)
 
     d4626_assets, adapter_states, total_assets, total_ratios = vault.getCurrentBalances()
@@ -83,26 +62,22 @@ with boa.env.prank(trader):
     assert adapter_states[0][1] == 1000
     assert adapter_states[0][2] == 1000
     assert adapter_states[0][5] == 1 
-    #assert adapter_states[0].target == 0
-    #assert adapter_states[0].delta== 0
     assert total_assets == 1000
     assert total_ratios == 1   
 
-# vault.withdraw(500, trader, trader)
+with boa.env.prank(adapt_junk.address):
+    # Steal some funds from the Adapter.
+    dai.transfer(owner, 600) 
 
-# current_assets = vault.totalAssets()
-# steal = int(math.ceil(current_assets * .27))# Steal 27% of the assets.
-# print("vault balance = ", vault.totalAssets(), "but stealing ", steal)
+with boa.env.prank(trader):
+    vault.deposit(1000, trader)
 
-# with boa.env.prank(adapt_junk.address):
-# dai.transfer(owner,steal)
-# print("vault balance = ", vault.totalAssets())
+    d4626_assets, adapter_states, total_assets, total_ratios = vault.getCurrentBalances()
 
-# with boa.env.prank(trader):
-# #vault.withdraw(300, trader, trader)
-# dai.approve(vault.address,100)
-# vault.deposit(100, trader)
-# dai.approve(vault.address,100)
-# vault.deposit(100, trader)
-# print("vault balance = ", vault.totalAssets())
-# vault.withdraw(200, trader, trader)
+    assert d4626_assets == 0
+    assert adapter_states[0][0] == adapt_junk.address
+    assert adapter_states[0][1] == 400
+    assert adapter_states[0][2] == 1000
+    assert adapter_states[0][5] == 0 
+    assert total_assets == 1400
+    assert total_ratios == 1 

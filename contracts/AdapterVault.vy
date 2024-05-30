@@ -1112,6 +1112,9 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_target_asset_balance: 
     for adapter in blocked_adapters:
         if adapter == empty(address): break
 
+        #if True:
+        #    raise
+
         new_strat : AdapterValue = self.strategy[adapter]
         new_strat.ratio = 0
         self.strategy[adapter] = new_strat
@@ -1306,7 +1309,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     #if True:
     #    raise  # dev: fail
 
-    self._balanceAdapters(empty(uint256), min_share_value, pregen_info, False)
+    self._balanceAdapters(empty(uint256), _asset_amount - min_share_value, pregen_info, False)
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
@@ -1324,6 +1327,10 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
 
     # Now mint assets to return to investor.    
     self._mint(_receiver, transfer_shares)
+
+    #if True:
+    #    raise  # dev: fail
+
 
     # Update all-time assets deposited for yield tracking.
     self.total_assets_deposited += total_after_assets - total_starting_assets
