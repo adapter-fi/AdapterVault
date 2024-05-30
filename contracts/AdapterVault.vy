@@ -360,6 +360,21 @@ def _defaultSlippage(_desiredAssets: uint256, _minAssets: uint256) -> uint256:
 
 
 @internal
+def _slippageAllowedBalance(_assetsToMove: uint256, _minAssetsToMove: uint256) -> uint256:
+    """
+    Balancing Adapters theoretically should result in zero loss in total assets.
+    Slippage allowances change this so we determine the difference between the targeted
+    funds moved and the allowable minimum funds moved and apply this delta to the
+    total assets controlled by the vault as the minimum remaining total assets controlled
+    by this vault post adapter balancing.
+    
+    This value should be provided to the _min_tasset_balance of _balanceAdapters requests.
+    """
+    _minAssetsToMove = self._defaultSlippage(_assetsToMove, _minAssetsToMove)
+    return self._totalAssetsCached() - (_assetsToMove - _minAssetsToMove)    
+
+
+@internal
 def _remove_adapter(_adapter: address, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _rebalance: bool = True, _force: bool = False, _min_assets: uint256 = 0) -> bool:
     # Is this from the owner?    
     assert msg.sender == self.owner, "Only owner can remove Lending Adapters."
@@ -1123,7 +1138,8 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint25
 
     final_asset_balance : uint256 = self._totalAssetsNoCache() #self._totalAssetsCached()
 
-    # breakpoint()
+    if self._totalAssetsCached() < min_total_asset_balance:
+        breakpoint()
 
     assert self._totalAssetsCached() >= min_total_asset_balance, "Slippage exceeded!"
 
@@ -1273,7 +1289,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     new_min_assets : uint256 = total_starting_assets + _asset_amount
     if transfer_shares > min_transfer_shares:
         share_slippage : decimal = convert(transfer_shares - min_transfer_shares, decimal)/convert(transfer_shares,decimal)    
-        new_min_assets = new_min_assets - convert(convert(new_min_assets, decimal) * share_slippage, uint256)
+        new_min_assets = new_min_assets - convert(convert(_asset_amount, decimal) * share_slippage, uint256)
 
     #breakpoint()
     #if True:
@@ -1345,10 +1361,12 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
     log Transfer(_owner, empty(address), shares)
 
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
-    self._balanceAdapters(_asset_amount, _min_assets, pregen_info, True ) 
+    assert _asset_amount >= _min_assets, "MIN MESSED UP"
+    min_total_assets_after_rebalance : uint256 = self._slippageAllowedBalance(_asset_amount, _min_assets)
+    #breakpoint()
+    current_balance : uint256 = self._balanceAdapters(_asset_amount, min_total_assets_after_rebalance, pregen_info, True ) 
 
     # Now account for possible slippage.
-    current_balance : uint256 = ERC20(asset).balanceOf(self)
     transfer_balance : uint256 = _asset_amount
     if transfer_balance > current_balance:
         # Didn't get as much as we expected. Is it above the minimum?
