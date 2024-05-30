@@ -97,7 +97,7 @@ struct Strategy:
 contractOwner: public(address)
 MAX_GUARDS: constant(uint256) = 5
 MAX_ADAPTERS: constant(uint256) = 5
-MAX_VAULTS: constant(uint256) = 3
+MAX_VAULTS: constant(uint256) = 25
 DEFAULT_MIN_PROPOSER_PAYOUT: constant(uint256) = 0  # TODO: Need a reasonable value here based on expected gas costs of paying proposal fees.
 LGov: public(DynArray[address, MAX_GUARDS])
 TDelay: public(uint256)

@@ -1,3 +1,5 @@
+from eth_account import Account
+import secrets
 import time, pprint
 from datetime import datetime, timedelta
 
@@ -570,6 +572,12 @@ def test_replaceGovernance(governance_contract, vault_contract_one, governance_c
  
     assert vault_contract_one.governance() == governance_contract_two.address
 
+def random_address():
+    priv = secrets.token_hex(32)
+    private_key = "0x" + priv
+    acct = Account.from_key(private_key)
+    return acct.address
+
 
 def test_addVault(governance_contract, vault_contract_one, vault_contract_two, vault_contract_three, vault_contract_four, accounts):
     owner, operator, someoneelse, someone, newcontract = accounts[:5]
@@ -596,6 +604,9 @@ def test_addVault(governance_contract, vault_contract_one, vault_contract_two, v
 
     av = governance_contract.addVault(vault_contract_three, sender=owner)
 
+    for i in range(22):
+        #inject 22 more "vaults"
+        governance_contract.addVault(random_address(), sender=owner)
     #Test if i can add a vault when len(VaultList) = MAX_VAULTS
     with ape.reverts():
         av = governance_contract.addVault(vault_contract_four, sender=owner)
