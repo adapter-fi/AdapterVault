@@ -806,13 +806,18 @@ def _convertToShares(_asset_amount: uint256, _starting_assets: uint256) -> uint2
     yield_fees, strat_fees = self._claimable_fees_available(_starting_assets)
     claimable_fees : uint256 = yield_fees + strat_fees
     
+    #if _asset_amount == 500:
+    #    breakpoint()
+
+
+    # If there aren't any shares/assets yet it's going to be 1:1.
+    if shareqty == 0 : return _asset_amount
+    if _starting_assets == 0 : return _asset_amount
+
     # Less fees
     assert _starting_assets >= claimable_fees, "_convertToShares sanity failure!" # BDM
     assetqty : uint256 = _starting_assets - claimable_fees
 
-    # If there aren't any shares/assets yet it's going to be 1:1.
-    if shareqty == 0 : return _asset_amount
-    if assetqty == 0 : return _asset_amount
 
     return _asset_amount * shareqty / assetqty 
 
@@ -1305,18 +1310,22 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     #     share_slippage : decimal = convert(transfer_shares - min_transfer_shares, decimal)/convert(transfer_shares,decimal)    
     #     new_min_assets = new_min_assets - convert(convert(_asset_amount, decimal) * share_slippage, uint256)
 
-    #breakpoint()
+    
     #if True:
     #    raise  # dev: fail
 
-    self._balanceAdapters(empty(uint256), _asset_amount - min_share_value, pregen_info, False)
+    bal_diff: uint256 = self._balanceAdapters(empty(uint256), _asset_amount - min_share_value, pregen_info, False)
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
     #real_shares : uint256 = convert(convert((total_after_assets - total_starting_assets), decimal) * spot_share_price, uint256)
-    real_shares : uint256 = self._convertToShares(total_after_assets-total_starting_assets, total_after_assets)    
+    deposit_value : uint256 = total_after_assets-total_starting_assets
 
-    #breakpoint()
+    # We use total_starting_assests to get a quote for the actual shares based on prior rates
+    # as we have not minted any new shares to account for the deposit.
+    real_shares : uint256 = self._convertToShares(deposit_value, total_starting_assets)    
+
+    #if _asset_amount == 400: breakpoint()
 
     if real_shares < transfer_shares:
         assert real_shares >= _min_shares, "ERROR - unable to meet minimum slippage for this deposit!"
@@ -1327,10 +1336,6 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
 
     # Now mint assets to return to investor.    
     self._mint(_receiver, transfer_shares)
-
-    #if True:
-    #    raise  # dev: fail
-
 
     # Update all-time assets deposited for yield tracking.
     self.total_assets_deposited += total_after_assets - total_starting_assets
