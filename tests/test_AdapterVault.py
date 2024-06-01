@@ -51,6 +51,12 @@ def adapter_adapterC(project, deployer, dai):
     c = deployer.deploy(project.MockLPAdapter, dai, wdai)
     return c    
 
+#Intentionally not a fixture so we get fresh underlying asset each time
+def adapter_adapterX(project, deployer, dai):
+    wdai = deployer.deploy(project.ERC20, "cWDAI", "cWDAI", 18, 0, deployer)
+    c = deployer.deploy(project.MockLPAdapter, dai, wdai)
+    return c
+
 @pytest.fixture
 def funds_alloc(project, deployer):
     f = deployer.deploy(project.FundsAllocator)
@@ -123,8 +129,9 @@ def test_add_adapter(project, deployer, adaptervault, adapter_adapterA, trader, 
     assert adapter_count == 1
 
     # How many more adapters can we add?
-    for i in range(MAX_ADAPTERS - 1): 
-        a = deployer.deploy(project.MockLPAdapter, dai, dai)
+    for i in range(MAX_ADAPTERS - 1):
+        #Ensuring a unique adapter instance with a unique wrapped token
+        a = adapter_adapterX(project, deployer, dai)
         result = adaptervault.add_adapter(a, sender=deployer) 
         assert result.return_value == True
         assert events_in_logs(result, ["AdapterAdded"])
@@ -185,8 +192,6 @@ def test_remove_adapter(project, deployer, adaptervault, adapter_adapterA, adapt
 
     if is_not_hard_hat():
         pytest.skip("Not on hard hat Ethereum snapshot.")
-
-    # BDM - tooling breaks here. assert result.return_value == True
 
     assert adaptervault.totalAssets() == 500   
     assert adapter_adapterA.totalAssets() == 0    
