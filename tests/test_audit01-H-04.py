@@ -85,7 +85,7 @@ def test_endorsement_short_circuit(governance_contract, vault_contract_one, acco
 
     for i in guards:
 
-        receipt = governance_contract.submitStrategy(STRATEGY, vault_contract_one, sender=strat)
+        receipt = governance_contract.submitStrategy(STRATEGY, vault_contract_one, sender=g1)
         nonce = receipt.return_value
 
 

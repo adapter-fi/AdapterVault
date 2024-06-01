@@ -127,17 +127,13 @@ def __init__(contractOwner: address, _tdelay: uint256):
     self.contractOwner = contractOwner
     self.TDelay = _tdelay
     if _tdelay == empty(uint256):
-        self.TDelay = 21600
+        self.TDelay = 259200 # 30 days vs 21600 (6 hours)
 
 
-@external
-def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
-    """
-    @notice This function provides a way to Propose a Strategy for a specific Vault
-    @param strategy The Proposed Strategy (for a Vault) to evaluate 
-    @param vault The vault address (for the Proposed Strategy) to evaluate
-    @return The nonce for a strategy submitted for a specific vault
-    """
+@internal
+def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
+    assert msg.sender in self.LGov, "Only Guards may submit strategies."
+
     if self.NextNonceByVault[vault] == 0:
         self.NextNonceByVault[vault] += 1
 
@@ -156,12 +152,13 @@ def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
             # First is it the same as the current one?
             # Otherwise has it been withdrawn? 
             # Otherwise, has it been short circuited down voted? 
-            # Has the period of protection from being replaced expired already?         
-    assert  (self.CurrentStrategyByVault[vault].Nonce == pending_strat.Nonce) or \
-            (pending_strat.Withdrawn == True) or \
-            len(pending_strat.VotesReject) > 0 and \
-            (len(pending_strat.VotesReject) >= pending_strat.no_guards/2) or \
-            (convert(block.timestamp, decimal) > (convert(pending_strat.TSubmitted, decimal)+(convert(self.TDelay, decimal)))), "Invalid proposed strategy!"
+            # Has the period of protection from being replaced expired already?
+    nonces_match : bool =  (self.CurrentStrategyByVault[vault].Nonce == pending_strat.Nonce)                
+    at_least_one_reject : bool = len(pending_strat.VotesReject) > 0
+    strategy_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
+    strategy_timedout : bool = (convert(block.timestamp, decimal) > (convert(pending_strat.TSubmitted, decimal)+(convert(self.TDelay, decimal))))
+    assert  nonces_match or (pending_strat.Withdrawn == True) or at_least_one_reject and \
+            strategy_rejected or strategy_timedout, "Invalid proposed strategy!"
 
     # Confirm msg.sender Eligibility
     # Confirm msg.sender is not blacklisted
@@ -192,6 +189,17 @@ def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     log StrategyProposal(strat, msg.sender, strat.LPRatios, strategy.min_proposer_payout, vault)
 
     return strat.Nonce
+
+
+@external
+def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
+    """
+    @notice This function provides a way to Propose a Strategy for a specific Vault
+    @param strategy The Proposed Strategy (for a Vault) to evaluate 
+    @param vault The vault address (for the Proposed Strategy) to evaluate
+    @return The nonce for a strategy submitted for a specific vault
+    """
+    return self._submitStrategy(strategy, vault)
 
 
 @external
@@ -259,7 +267,7 @@ def endorseStrategy(Nonce: uint256, vault: address):
 
 
 @external
-def rejectStrategy(Nonce: uint256, vault: address):
+def rejectStrategy(Nonce: uint256, vault: address, replacementStrategy : ProposedStrategy = empty(ProposedStrategy)):
     """
     @notice This function provides a way to vote against a proposed strategy for a specific vault
     @param Nonce Integer (for the Proposed Strategy, by Vault) to evaluate
@@ -286,8 +294,18 @@ def rejectStrategy(Nonce: uint256, vault: address):
     assert msg.sender not in pending_strat.VotesReject
     assert msg.sender not in pending_strat.VotesEndorse
 
+    strategy_already_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
+
     #Vote to reject strategy
     self.PendingStrategyByVault[vault].VotesReject.append(msg.sender)
+
+    strategy_ultimately_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
+
+    # If there is a replacement strategy suggested and this is the vote that ultimately decides the thing...
+    if replacementStrategy.APYNow != 0: # Can't test against emtpty(ProposedStrategy) due to Vyper issue #2638.
+        if (not strategy_already_rejected) and strategy_ultimately_rejected:    
+            # Replace the current pending but rejected strategy with this new one.
+            self._submitStrategy(replacementStrategy, vault)
 
     log StrategyVote(Nonce, vault, msg.sender, True)
 
