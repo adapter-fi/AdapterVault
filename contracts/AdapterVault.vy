@@ -285,12 +285,13 @@ def _set_strategy(_proposer: address, _strategies : AdapterStrategy[MAX_ADAPTERS
 
     # Clear out all existing ratio allocations.
     for adapter in self.adapters:
-        self.strategy[adapter] = empty(AdapterValue)
+        self.strategy[adapter].ratio = 0
 
     # Now set strategies according to the new plan.
     for strategy in _strategies:
         plan : AdapterValue = empty(AdapterValue)
         plan.ratio = strategy.ratio
+        plan.last_asset_value = self.strategy[strategy.adapter].last_asset_value
         self.strategy[strategy.adapter] = plan
 
     log StrategyActivation(_strategies, _proposer)
