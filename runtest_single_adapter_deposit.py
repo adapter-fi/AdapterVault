@@ -101,3 +101,5 @@ assert d4626_end_DAI == d4626_start_DAI
 
 LP_end_DAI = dai.balanceOf(adapt_junk)
 assert LP_end_DAI - LP_start_DAI == 900  
+
+print("runtest_single_adapter_deposit.py complete.")

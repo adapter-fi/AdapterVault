@@ -106,3 +106,5 @@ with boa.env.prank(trader):
 # vault.deposit(100, trader)
 # print("vault balance = ", vault.totalAssets())
 # vault.withdraw(200, trader, trader)
+
+print("run4626.py complete.")

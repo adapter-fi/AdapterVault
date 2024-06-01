@@ -82,3 +82,4 @@ with boa.env.prank(trader):
     assert total_assets == 1400
     assert total_ratios == 0
     
+print("rundeposit4626.py complete.")
