@@ -35,6 +35,10 @@ struct BalanceAdapter:
 @internal
 @pure
 def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS]) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]):
+    
+    #if True:
+    #    raise
+
     adapter_assets_allocated : uint256 = 0 
     d4626_delta : int256 = 0
     tx_count: uint256 = 0
@@ -66,6 +70,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
         if adapter.ratio == 0 and adapter.current > 0:
             adapter.target = 0
             adapter.delta = max(convert(adapter.current, int256)*-1, adapter.max_withdraw) # Withdraw it all!
+            target_withdraw_balance -= min(convert(adapter.delta * -1, uint256),target_withdraw_balance)
 
         elif adapter.current > 0:
             withdraw : uint256 = min(target_withdraw_balance, adapter.current)
@@ -91,6 +96,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
 @internal
 @pure
 def _getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]):
+    # BDM TODO : enforce ADAPTER_BREAKS_LOSS_POINT more completely than just during deposits.
     assert _d4626_asset_target <= _total_assets, "Not enough assets to fulfill d4626 target goals!"
 
     if _withdraw_only == True:
@@ -115,7 +121,7 @@ def _getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _t
         adapter : BalanceAdapter = _adapter_balances[pos]
         if adapter.adapter == empty(address): break
 
-        # If the adapte has been removed from the strategy then we must empty it!
+        # If the adapter has been removed from the strategy then we must empty it!
         if adapter.ratio == 0 and adapter.current > 0:
             adapter.target = 0
             adapter.delta = max(convert(adapter.current, int256)*-1, adapter.max_withdraw) # Withdraw it all! (max_withdraw is a negative number)

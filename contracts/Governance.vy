@@ -342,7 +342,7 @@ def addGuard(GuardAddress: address):
     assert len(self.LGov) <= MAX_GUARDS, "Cannot add anymore guards"
 
     #Check to see that the Guard being added is a valid address
-    assert GuardAddress != ZERO_ADDRESS, "Cannot add ZERO_ADDRESS"
+    assert GuardAddress != empty(address), "Cannot add ZERO_ADDRESS"
 
     #Check to see that GuardAddress is not already in self.LGov
     assert GuardAddress not in self.LGov, "Guard already exists"
@@ -398,7 +398,7 @@ def swapGuard(OldGuardAddress: address, NewGuardAddress: address):
     assert msg.sender == self.contractOwner, "Cannot swap guard unless you are contract owner"
 
     #Check that the guard we are swapping in is a valid address
-    assert NewGuardAddress != ZERO_ADDRESS, "Cannot add ZERO_ADDRESS"
+    assert NewGuardAddress != empty(address), "Cannot add ZERO_ADDRESS"
 
     #Check that the guard we are swapping in is not on the list of guards already
     assert NewGuardAddress not in self.LGov, "New Guard is already a Guard."
@@ -464,7 +464,7 @@ def replaceGovernance(NewGovernance: address, vault: address):
     assert NewGovernance != self
 
     #Check if new contract address is valid address
-    assert NewGovernance != ZERO_ADDRESS
+    assert NewGovernance != empty(address)
 
     #Check if sender has voted, if not log new vote
     if self.VotesGCByVault[vault][msg.sender] != NewGovernance: 
@@ -497,7 +497,7 @@ def addVault(vault: address):
     assert len(self.VaultList) <= MAX_VAULTS
 
     # Must be a real vault address
-    assert vault != ZERO_ADDRESS
+    assert vault != empty(address)
 
     # Must not already be in vault list
     assert vault not in self.VaultList
@@ -555,7 +555,7 @@ def swapVault(OldVaultAddress: address, NewVaultAddress: address):
     assert msg.sender == self.contractOwner
 
     #Check that the vault we are swapping in is a valid address
-    assert NewVaultAddress != ZERO_ADDRESS
+    assert NewVaultAddress != empty(address)
 
     #Check that the vault we are swapping in is not on the list of vaults already
     assert NewVaultAddress not in self.VaultList

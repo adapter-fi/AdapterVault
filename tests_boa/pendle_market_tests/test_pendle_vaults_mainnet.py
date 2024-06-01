@@ -108,7 +108,7 @@ def funds_alloc(setup_chain, deployer):
         f = boa.load("contracts/FundsAllocator.vy")
     return f
 
-def _adaptervault(deployer, asset, trader, funds_alloc):
+def _adaptervault(deployer, asset, trader, funds_alloc, default_slippage):
     with boa.env.prank(deployer):
         v = boa.load(
             "contracts/AdapterVault.vy",
@@ -119,7 +119,7 @@ def _adaptervault(deployer, asset, trader, funds_alloc):
             [],
             deployer,
             funds_alloc,
-            Decimal(2.0)
+            Decimal(default_slippage)
         )
     return v
 
@@ -137,13 +137,13 @@ def pendle_SY(_sy):
         return factory.at(_sy)
 
 
-def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc, _PENDLE_ORACLE, oracle):
+def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc, _PENDLE_ORACLE, oracle, default_slippage=2.0):
 
     pt = pendle_pt(_pendle_pt)
     pendleMarket = pendle_Market(_pendle_market)
     pendleOracle = _pendleOracle(pendleMarket, _PENDLE_ORACLE)
     pendle_adapter = _pendle_adapter(deployer, asset, _pendle_market)
-    adaptervault = _adaptervault(deployer, asset, trader, funds_alloc)
+    adaptervault = _adaptervault(deployer, asset, trader, funds_alloc, default_slippage)
     strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
     strategy[0] = (pendle_adapter.address, 1)
 
@@ -321,4 +321,4 @@ def test_markets_sweth(setup_chain, trader, deployer, funds_alloc):
         rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
 
-    market_test(PENDLE_PT, sweth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+    market_test(PENDLE_PT, sweth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange, default_slippage=6.0)
