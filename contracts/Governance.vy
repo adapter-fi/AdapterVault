@@ -496,6 +496,11 @@ def replaceGovernance(NewGovernance: address, vault: address):
 
     if len(self.LGov) == VoteCount:
         AdapterVault(vault).replaceGovernanceContract(NewGovernance)
+        
+        # Clear out the old votes.
+        for guard_addr in self.LGov:
+            self.VotesGCByVault[vault][guard_addr] = empty(address)
+
 
     log GovernanceContractChanged(Voter, NewGovernance, VoteCount, TotalGuards)
 
