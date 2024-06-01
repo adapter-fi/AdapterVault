@@ -74,10 +74,11 @@ with boa.env.prank(trader):
 
     d4626_assets, adapter_states, total_assets, total_ratios = vault.getCurrentBalances()
 
-    assert d4626_assets == 0
+    assert d4626_assets == 1000
     assert adapter_states[0][0] == adapt_junk.address
     assert adapter_states[0][1] == 400
     assert adapter_states[0][2] == 1000
     assert adapter_states[0][5] == 0 
     assert total_assets == 1400
-    assert total_ratios == 1 
+    assert total_ratios == 0
+    

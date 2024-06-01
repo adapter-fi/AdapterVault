@@ -454,12 +454,6 @@ def _swap_adapters(_adapterOld: address, _adapterNew: address, _force: bool = Fa
         # Is there any slippage?
         if NewAssets < OldAssets:
             min_transfer_balance : uint256 = self._defaultSlippage(OldAssets, _min_assets)
-            # min_transfer_balance : uint256 = OldAssets
-
-            # # If _min_assets isn't specified we based allowed slippage as a percentage.
-            # if _min_assets == 0:
-            #     slippage_allowed : uint256 = convert(convert(min_transfer_balance, decimal) * (MAX_SLIPPAGE_PERCENT/100.0), uint256)
-            #     min_transfer_balance = min_transfer_balance - slippage_allowed
 
             assert min_transfer_balance <= NewAssets, "ERROR - Swap exceeds maximum slippage."
 
@@ -715,9 +709,6 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
     if _asset_amount > 0:               # Otherwise we take it all.
         fees_to_claim = _asset_amount   # This will be lower than or equal to the total available fees.
 
-    # Account for slippage minimums.
-    #min_fees_to_claim : uint256 = self._defaultSlippage(fees_to_claim, _min_assets)
-
     # Do we have enough balance locally to satisfy the claim?
     current_vault_assets : uint256 = self._vaultAssets()
     if current_vault_assets < fees_to_claim:
@@ -725,7 +716,6 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
         # Note - there is a chance that balance adapters could return more than we asked for so
         #        don't just give it all away in case there's an overage.
         fees_to_claim = min(self._balanceAdapters(fees_to_claim, _min_assets, pregen_info, True), fees_to_claim)
-        #assert fees_to_claim >= min_fees_to_claim, "Couldn't get adequate assets into the vault to support fee request."
     else:
         fees_to_claim = min(_asset_amount, current_vault_assets)
 
@@ -805,10 +795,6 @@ def _convertToShares(_asset_amount: uint256, _starting_assets: uint256) -> uint2
     strat_fees : uint256 = 0
     yield_fees, strat_fees = self._claimable_fees_available(_starting_assets)
     claimable_fees : uint256 = yield_fees + strat_fees
-    
-    #if _asset_amount == 500:
-    #    breakpoint()
-
 
     # If there aren't any shares/assets yet it's going to be 1:1.
     if shareqty == 0 : return _asset_amount
@@ -817,7 +803,6 @@ def _convertToShares(_asset_amount: uint256, _starting_assets: uint256) -> uint2
     # Less fees
     assert _starting_assets >= claimable_fees, "_convertToShares sanity failure!" # BDM
     assetqty : uint256 = _starting_assets - claimable_fees
-
 
     return _asset_amount * shareqty / assetqty 
 
@@ -1095,6 +1080,9 @@ def _getBalanceTxs(_target_asset_balance: uint256, _min_proposer_payout: uint256
 
 @internal
 def _balanceAdapters(_target_asset_balance: uint256, _min_target_asset_balance: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS], _withdraw_only : bool ) -> uint256:
+    # If _target_asset_balance is zero then we're looking at a deposit and _min_target_asset_balance
+    # becomes the maximum slippage value (via _slippageAllowedBalance).
+
     # Make sure we have enough assets to send to _receiver.
     txs: BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters: address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
@@ -1116,9 +1104,6 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_target_asset_balance: 
     # If there are blocked_adapters then set their strategy ratios to zero.
     for adapter in blocked_adapters:
         if adapter == empty(address): break
-
-        #if True:
-        #    raise
 
         new_strat : AdapterValue = self.strategy[adapter]
         new_strat.ratio = 0
@@ -1153,9 +1138,6 @@ def _balanceAdapters(_target_asset_balance: uint256, _min_target_asset_balance: 
 
     final_asset_balance : uint256 = self._totalAssetsCached()
 
-    #if self._totalAssetsCached() < min_total_asset_balance:
-    #    breakpoint()
-
     assert self._totalAssetsCached() >= min_total_asset_balance, "Slippage exceeded!"
 
     return self._vaultAssets()
@@ -1172,11 +1154,6 @@ def balanceAdapters(_target_asset_balance: uint256, _min_tasset_balance: uint256
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     """
     assert msg.sender == self.owner, "only owner can call balanceAdapters"
-
-    # # Determine what default slippage should be if _min_tasset_balance isn't specified.
-    # min_final_balance : uint256 = _min_tasset_balance
-    # if min_final_balance == 0:
-    #     min_final_balance = self._defaultSlippage(self._vaultAssets(), 0)
 
     ret: uint256 = self._balanceAdapters(_target_asset_balance, _min_tasset_balance, pregen_info, _withdraw_only)
     self._dirtyAssetCache()
@@ -1294,25 +1271,11 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
         _min_shares = self._defaultSlippage(transfer_shares, _min_shares)
     min_share_value : uint256 = self._convertToAssets(_min_shares, total_starting_assets)
 
-    #spot_share_price : decimal = convert(transfer_shares, decimal) / convert(_asset_amount, decimal)
-
     # Move assets to this contract from caller in one go.
     ERC20(asset).transferFrom(msg.sender, self, _asset_amount)
 
     # Clear the asset cache for vault but not adapters.
     self._dirtyAssetCache(True, False)
-
-    # min_transfer_shares : uint256 = self._defaultSlippage(transfer_shares, _min_shares)
-
-    # # Determine the percentage slippage allowed for shares and then apply that to assets as a ratio.
-    # new_min_assets : uint256 = total_starting_assets + _asset_amount
-    # if transfer_shares > min_transfer_shares:
-    #     share_slippage : decimal = convert(transfer_shares - min_transfer_shares, decimal)/convert(transfer_shares,decimal)    
-    #     new_min_assets = new_min_assets - convert(convert(_asset_amount, decimal) * share_slippage, uint256)
-
-    
-    #if True:
-    #    raise  # dev: fail
 
     bal_diff: uint256 = self._balanceAdapters(empty(uint256), _asset_amount - min_share_value, pregen_info, False)
 
@@ -1324,8 +1287,6 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     # We use total_starting_assests to get a quote for the actual shares based on prior rates
     # as we have not minted any new shares to account for the deposit.
     real_shares : uint256 = self._convertToShares(deposit_value, total_starting_assets)    
-
-    #if _asset_amount == 400: breakpoint()
 
     if real_shares < transfer_shares:
         assert real_shares >= _min_shares, "ERROR - unable to meet minimum slippage for this deposit!"
@@ -1384,19 +1345,8 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
     log Transfer(_owner, empty(address), shares)
 
     # Make sure we have enough assets to send to _receiver. Do a withdraw only balance.
-    #assert _asset_amount >= min_transfer_balance, "MIN MESSED UP"
-    #min_total_assets_after_rebalance : uint256 = self._slippageAllowedBalance(_asset_amount, _min_assets)
-
     current_balance : uint256 = self._balanceAdapters(_asset_amount, _min_assets, pregen_info, True ) 
 
-    # Now account for possible slippage.
-    # transfer_balance : uint256 = _asset_amount
-    # if transfer_balance > current_balance:
-    #     # Didn't get as much as we expected. Is it above the minimum?
-    #     assert transfer_balance >= min_transfer_balance, "ERROR - Unable to meet minimum slippage requested for this withdraw."
-
-    #     # We'll transfer what we received.
-    #     transfer_balance = current_balance
     if _asset_amount > current_balance:
         log SlippageWithdraw(msg.sender, _receiver, _owner, _asset_amount, shares, current_balance)
         _asset_amount = current_balance

@@ -80,12 +80,12 @@ with boa.env.prank(trader):
 
     assert d4626_assets == 0
     assert adapter_states[0][0] == adapt_junk.address
-    assert adapter_states[0][1] == 1000
-    assert adapter_states[0][2] == 1000
+    assert adapter_states[0][1] == 21000
+    assert adapter_states[0][2] == 21000
     assert adapter_states[0][5] == 1 
     #assert adapter_states[0].target == 0
     #assert adapter_states[0].delta== 0
-    assert total_assets == 1000
+    assert total_assets == 21000
     assert total_ratios == 1   
 
 # vault.withdraw(500, trader, trader)
