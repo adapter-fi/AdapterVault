@@ -725,7 +725,7 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
         #        don't just give it all away in case there's an overage.
         fees_to_claim = min(self._balanceAdapters(fees_to_claim, _min_assets, pregen_info, True), fees_to_claim)
     else:
-        fees_to_claim = min(_asset_amount, current_vault_assets)
+        fees_to_claim = min(fees_to_claim, current_vault_assets)
 
     # Adjust fees proportionally to account for slippage.
     if strat_fees > 0 and yield_fees > 0:
