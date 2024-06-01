@@ -2,12 +2,10 @@
 #pragma evm-version cancun
 
 """
-
 @title Governance Contract
 @license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
 @author BiggestLab
 @notice Governance for AdapterVault
-
 """
 event StrategyWithdrawal:
     Nonce: uint256
