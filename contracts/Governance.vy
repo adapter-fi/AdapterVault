@@ -491,8 +491,10 @@ def replaceGovernance(NewGovernance: address, vault: address):
 
     #Add Vote to VoteCount
     for guard_addr in self.LGov:
-        if self.VotesGCByVault[vault][guard_addr] == NewGovernance:
-            VoteCount += 1
+        # Ensure we only count votes by current active Guards.
+        if guard_addr in self.LGov:
+            if self.VotesGCByVault[vault][guard_addr] == NewGovernance:
+                VoteCount += 1
 
     if len(self.LGov) == VoteCount:
         AdapterVault(vault).replaceGovernanceContract(NewGovernance)
