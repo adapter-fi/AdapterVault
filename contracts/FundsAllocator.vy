@@ -34,12 +34,7 @@ struct BalanceAdapter:
 
 @internal
 @pure
-def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS]) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]):
-    
-    #if True:
-    #    raise
-
-    adapter_assets_allocated : uint256 = 0 
+def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS]) -> (int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]):
     d4626_delta : int256 = 0
     tx_count: uint256 = 0
 
@@ -51,7 +46,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
 
     if _vault_balance >= _d4626_asset_target:
         # Vault has adequate funds to fulfill the withdraw. Nothing left to do.
-        return adapter_assets_allocated, d4626_delta, tx_count, adapters, blocked_adapters
+        return d4626_delta, tx_count, adapters, blocked_adapters
 
     # How much more do we need to withdraw (aspirational)?
     target_withdraw_balance : uint256 = _d4626_asset_target - _vault_balance        
@@ -77,8 +72,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
             target_withdraw_balance = target_withdraw_balance - withdraw
             adapter.delta = convert(withdraw, int256) * -1
 
-        if adapter.delta != 0:            
-            adapter_assets_allocated += convert(adapter.delta * -1, uint256)    # TODO : eliminate adapter_assets_allocated if never used.
+        if adapter.delta != 0:                
             d4626_delta += adapter.delta * -1
             adapters[tx_count] = adapter
             tx_count += 1
@@ -86,16 +80,15 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
         # NEW
         adapter_result : int256 = convert(adapter.current, int256) + adapter.delta
         assert adapter_result >= 0, "Adapter resulting balance can't be less than zero!"
-        adapter_assets_allocated += convert(adapter_result, uint256)
 
     assert target_withdraw_balance == 0, "ERROR - Unable to fulfill this withdraw!"
 
-    return adapter_assets_allocated, d4626_delta, tx_count, adapters, blocked_adapters
+    return d4626_delta, tx_count, adapters, blocked_adapters
 
 
 @internal
 @pure
-def _getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]):
+def _getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]):
     # BDM TODO : enforce ADAPTER_BREAKS_LOSS_POINT more completely than just during deposits.
     assert _d4626_asset_target <= _total_assets, "Not enough assets to fulfill d4626 target goals!"
 
@@ -104,7 +97,6 @@ def _getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _t
 
     total_adapter_target_assets : uint256 = _total_assets - _d4626_asset_target
 
-    adapter_assets_allocated : uint256 = 0 
     d4626_delta : int256 = 0
     tx_count: uint256 = 0
 
@@ -152,7 +144,6 @@ def _getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _t
 
         adapter_result : int256 = convert(adapter.current, int256) + adapter.delta
         assert adapter_result >= 0, "Adapter resulting balance can't be less than zero!"
-        adapter_assets_allocated += convert(adapter_result, uint256)
 
         d4626_delta += adapter.delta * -1
 
@@ -173,15 +164,15 @@ def _getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _t
         adapters[tx_count] = adapter
         tx_count+=1 
 
-    return adapter_assets_allocated, d4626_delta, tx_count, adapters, blocked_adapters
+    return d4626_delta, tx_count, adapters, blocked_adapters
 
 
 @external
 @pure
-def getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (uint256, int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+def getTargetBalances(_vault_balance: uint256, _d4626_asset_target: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_balances: BalanceAdapter[MAX_ADAPTERS], _min_outgoing_tx: uint256, _withdraw_only : bool = False) -> (int256, uint256, BalanceAdapter[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
     """
     @dev    Returns: 
-            1) uint256 - the total asset allocation across all adapters (less _d4626_asset_target),
+            # REMOVED 1) uint256 - the total asset allocation across all adapters (less _d4626_asset_target),
             2) int256 - the total delta of local d4626 assets that would be moved across
             all transactions, 
             3) uint256 - the total number of planned txs to achieve these targets,
@@ -214,11 +205,10 @@ def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min
     adapter_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
     adapter_states: BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
-    adapter_assets_allocated : uint256 = 0
     d4626_delta : int256 = 0
     tx_count : uint256 = 0
 
-    adapter_assets_allocated, d4626_delta, tx_count, adapter_states, blocked_adapters = self._getTargetBalances(_vault_balance, _target_asset_balance, _total_assets, _total_ratios, _adapter_states, _min_proposer_payout, _withdraw_only)
+    d4626_delta, tx_count, adapter_states, blocked_adapters = self._getTargetBalances(_vault_balance, _target_asset_balance, _total_assets, _total_ratios, _adapter_states, _min_proposer_payout, _withdraw_only)
 
     pos : uint256 = 0
     for tx_bal in adapter_states:
