@@ -151,9 +151,14 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
             # Otherwise has it been withdrawn? 
             # Otherwise, has it been short circuited down voted? 
             # Has the period of protection from being replaced expired already?
+    reject_votes : uint256 = 0
+    for guard_addr in self.LGov:
+        if guard_addr in pending_strat.VotesReject:
+            reject_votes += 1
+
     nonces_match : bool =  (self.CurrentStrategyByVault[vault].Nonce == pending_strat.Nonce)                
-    at_least_one_reject : bool = len(pending_strat.VotesReject) > 0
-    strategy_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
+    at_least_one_reject : bool = reject_votes > 0
+    strategy_rejected : bool = (reject_votes >= pending_strat.no_guards/2+1)
     strategy_timedout : bool = (convert(block.timestamp, decimal) > (convert(pending_strat.TSubmitted, decimal)+(convert(self.TDelay, decimal))))
     assert  nonces_match or (pending_strat.Withdrawn == True) or at_least_one_reject and \
             strategy_rejected or strategy_timedout, "Invalid proposed strategy!"
@@ -328,9 +333,17 @@ def activateStrategy(Nonce: uint256, vault: address):
     assert (pending_strat.Withdrawn == False), "Strategy is withdrawn."
 
     #Confirm strategy is approved by guards
-    assert (len(pending_strat.VotesEndorse) >= (len(self.LGov)/2)+1) or \
+    endorse_votes : uint256 = 0
+    reject_votes : uint256 = 0
+    for guard_addr in self.LGov:
+        if guard_addr in pending_strat.VotesEndorse:
+            endorse_votes += 1
+        if guard_addr in pending_strat.VotesReject:
+            reject_votes += 1
+
+    assert (endorse_votes >= (len(self.LGov)/2)+1) or \
            ((pending_strat.TSubmitted + self.TDelay) < block.timestamp), "Premature activation with insufficience endorsements."
-    assert len(pending_strat.VotesReject) <= len(pending_strat.VotesEndorse), "Strategy was rejected."
+    assert reject_votes <= endorse_votes, "Strategy was rejected."
 
     #Confirm Pending Strategy is the Strategy we want to activate
     assert pending_strat.Nonce == Nonce, "Incorrect strategy nonce."
@@ -491,10 +504,8 @@ def replaceGovernance(NewGovernance: address, vault: address):
 
     #Add Vote to VoteCount
     for guard_addr in self.LGov:
-        # Ensure we only count votes by current active Guards.
-        if guard_addr in self.LGov:
-            if self.VotesGCByVault[vault][guard_addr] == NewGovernance:
-                VoteCount += 1
+        if self.VotesGCByVault[vault][guard_addr] == NewGovernance:
+            VoteCount += 1
 
     if len(self.LGov) == VoteCount:
         AdapterVault(vault).replaceGovernanceContract(NewGovernance)
