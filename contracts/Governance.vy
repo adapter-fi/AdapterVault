@@ -147,10 +147,10 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
 
     # Confirm there's no currently pending strategy for this vault so we can replace the old one.
 
-            # First is it the same as the current one?
-            # Otherwise has it been withdrawn? 
-            # Otherwise, has it been short circuited down voted? 
-            # Has the period of protection from being replaced expired already?
+    # First is it the same as the current one?
+    # Otherwise has it been withdrawn? 
+    # Otherwise, has it been short circuited down voted? 
+    # Has the period of protection from being replaced expired already?
     reject_votes : uint256 = 0
     for guard_addr in self.LGov:
         if guard_addr in pending_strat.VotesReject:
