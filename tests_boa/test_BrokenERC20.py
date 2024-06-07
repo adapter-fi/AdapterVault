@@ -3,6 +3,9 @@ import pytest
 import boa
 from decimal import Decimal
 
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+MAX_ADAPTERS = 5 # Must match the value from AdapterVault.vy
+
 @pytest.fixture
 def deployer():
     acc = boa.env.generate_address(alias="deployer")
@@ -60,6 +63,13 @@ def vault(deployer, broke_erc20, funds_alloc, gov, adapter):
             funds_alloc,
             Decimal(2.0)
         )
+
+    strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
+    strategy[0] = (adapter.address, 1)
+
+    with boa.env.prank(gov.address):
+        v.set_strategy(deployer, strategy, 0)
+
     return v
 
 def test_vault(vault, deployer, trader, broke_erc20):

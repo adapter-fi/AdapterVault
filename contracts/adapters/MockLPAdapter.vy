@@ -98,7 +98,7 @@ def totalAssets() -> uint256:
 @nonpayable
 def deposit(asset_amount: uint256, pregen_info: Bytes[4096]=empty(Bytes[4096])):
     # Move funds into the LP.
-    ERC20(aoriginalAsset).transfer(adapterLPAddr, asset_amount)
+    ERC20(aoriginalAsset).transfer(adapterLPAddr, asset_amount, default_return_value=True)
 
     # Return LP wrapped assets to 4626 vault.
     # TODO : Ignore wrapped asset for now!
@@ -123,7 +123,7 @@ def withdraw(asset_amount: uint256 , withdraw_to: address, pregen_info: Bytes[40
     assert ERC20(aoriginalAsset).allowance(adapterLPAddr, self) >= asset_amount, "NO APPROVAL!"
 
     # Move funds into the destination accout.
-    ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, asset_amount)
+    ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, asset_amount, default_return_value=True)
     
     return asset_amount
 
