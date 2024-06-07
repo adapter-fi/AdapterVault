@@ -3,6 +3,9 @@ init: check-node-version
 	rm -rf .build
 	rm -rf node_modules
 	pip install -r requirements.txt
+	pip install web3==6.19.0 #will complain about dependencies but we ignore..
+	python -m venv  .venv_ape
+	venv-run --venv .venv_ape pip install -r requirements.ape.txt
 	npm ci
 
 check-env:
@@ -27,7 +30,7 @@ hardhat: check-env check-node-version
 
 .PHONY: test
 test: check-env
-	pytest tests_boa/ --ignore tests_boa/test_transient.py
+	pytest tests_boa/ --ignore tests_boa/test_transient.py $(filter-out $@,$(MAKECMDGOALS))
 
 
 abi-export:

@@ -130,3 +130,10 @@ def withdraw(asset_amount: uint256 , withdraw_to: address, pregen_info: Bytes[40
 @external
 def claimRewards(claimant: address):
     pass
+
+@external
+@view
+def managed_tokens() -> DynArray[address, 10]:
+    ret: DynArray[address, 10] = empty(DynArray[address, 10])
+    ret.append(awrappedAsset)
+    return ret

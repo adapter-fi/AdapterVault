@@ -1,3 +1,5 @@
+from eth_account import Account
+import secrets
 import time, pprint
 from datetime import datetime, timedelta
 
@@ -175,7 +177,10 @@ def test_submitStrategy(governance_contract, vault_contract_one, accounts, owner
 
 
     #Submit a strategy
-    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    with ape.reverts("Only Guards may submit strategies."):
+        sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+
+    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
 
     w3 = Web3()
     cont = w3.eth.contract(address=governance_contract.address, abi=json.loads(project.contracts["Governance"].model_dump_json())["abi"])
@@ -200,11 +205,11 @@ def test_submitStrategy(governance_contract, vault_contract_one, accounts, owner
 
     #Test if i can submit a strategy while there is pending strategy
     with ape.reverts():
-        governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+        governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
 
     #Test if i can submit a strategy where the APY does not increase
     with ape.reverts():
-        governance_contract.submitStrategy(BadStrategy, vault_contract_one, sender=owner)
+        governance_contract.submitStrategy(BadStrategy, vault_contract_one, sender=someone)
 
     print("Current timestamp %s" % datetime.fromtimestamp(ape.chain.pending_timestamp))
 
@@ -220,7 +225,7 @@ def test_withdrawStrategy(governance_contract, vault_contract_one, accounts, pro
     governance_contract.addVault(vault_contract_one, sender=owner)
 
     #Submit a strategy
-    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
     w3 = Web3()
     cont = w3.eth.contract(address=governance_contract.address, abi=json.loads(project.contracts["Governance"].model_dump_json())["abi"])
     # print(sp)
@@ -235,12 +240,12 @@ def test_withdrawStrategy(governance_contract, vault_contract_one, accounts, pro
 
     #Test if i can withdraw strategy when i am not eligible
     with ape.reverts():
-        ws = governance_contract.withdrawStrategy(NONCE, vault_contract_one, sender=someone)
+        ws = governance_contract.withdrawStrategy(NONCE, vault_contract_one, sender=someoneelse)
 
     print("Current timestamp %s" % datetime.fromtimestamp(ape.chain.pending_timestamp))
 
     #Withdraw Strategy
-    ws = governance_contract.withdrawStrategy(NONCE, vault_contract_one, sender=owner)
+    ws = governance_contract.withdrawStrategy(NONCE, vault_contract_one, sender=someone)
     logs = cont.events.StrategyWithdrawal.get_logs(fromBlock=ws.block_number, toBlock=ws.block_number)
     # logs = list(ws.decode_logs(governance_contract.StrategyWithdrawal))
     assert len(logs) == 1
@@ -252,7 +257,7 @@ def test_withdrawStrategy(governance_contract, vault_contract_one, accounts, pro
     ape.chain.pending_timestamp = int(current_time.timestamp())
 
     #Submit a second Strategy
-    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
     logs = cont.events.StrategyProposal.get_logs(fromBlock=sp.block_number, toBlock=sp.block_number)
     assert len(logs) == 1
 
@@ -276,7 +281,7 @@ def test_withdrawStrategy(governance_contract, vault_contract_one, accounts, pro
 
     #Test if i can withdraw strategy when its already activated
     with ape.reverts():
-        governance_contract.withdrawStrategy(2, vault_contract_one, sender=owner)
+        governance_contract.withdrawStrategy(2, vault_contract_one, sender=someone)
 
 
 
@@ -290,7 +295,7 @@ def test_endorseStrategy(governance_contract, vault_contract_one, accounts, proj
     governance_contract.addVault(vault_contract_one, sender=owner)
 
     #Submit a Strategy
-    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
     w3 = Web3()
     cont = w3.eth.contract(address=governance_contract.address, abi=json.loads(project.contracts["Governance"].model_dump_json())["abi"])
     # print(sp)
@@ -347,7 +352,7 @@ def test_rejectStrategy(governance_contract, vault_contract_one, accounts, proje
     governance_contract.addVault(vault_contract_one, sender=owner)
 
     #Submit a Strategy
-    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
     w3 = Web3()
     cont = w3.eth.contract(address=governance_contract.address, abi=json.loads(project.contracts["Governance"].model_dump_json())["abi"])
     # print(sp)
@@ -388,7 +393,10 @@ def test_activateStrategy(governance_contract, vault_contract_one, accounts, pro
     governance_contract.addVault(vault_contract_one, sender=owner)
 
     #Submit a Strategy
-    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    with ape.reverts("Only Guards may submit strategies."):
+        sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
+
     w3 = Web3()
     cont = w3.eth.contract(address=governance_contract.address, abi=json.loads(project.contracts["Governance"].model_dump_json())["abi"])
     # print(sp)
@@ -412,7 +420,7 @@ def test_activateStrategy(governance_contract, vault_contract_one, accounts, pro
     assert logs[0].args.strategy.APYPredicted == APYPREDICTED
 
     #Submit another Strategy
-    governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
 
     # governance_contract.PendingStrategyByVault[vault_contract_one].Nonce = 2
 
@@ -423,11 +431,11 @@ def test_activateStrategy(governance_contract, vault_contract_one, accounts, pro
     with ape.reverts():
         acs = governance_contract.activateStrategy(3, vault_contract_one, sender=owner)
 
-    ws = governance_contract.withdrawStrategy(2, vault_contract_one, sender=owner)
+    ws = governance_contract.withdrawStrategy(2, vault_contract_one, sender=someone)
 
     #Test if i can activate strategy when its withdrawn
     with ape.reverts():
-        acs = governance_contract.activateStrategy(2, vault_contract_one, sender=owner)
+        acs = governance_contract.activateStrategy(2, vault_contract_one, sender=someone)
  
 
 
@@ -570,6 +578,12 @@ def test_replaceGovernance(governance_contract, vault_contract_one, governance_c
  
     assert vault_contract_one.governance() == governance_contract_two.address
 
+def random_address():
+    priv = secrets.token_hex(32)
+    private_key = "0x" + priv
+    acct = Account.from_key(private_key)
+    return acct.address
+
 
 def test_addVault(governance_contract, vault_contract_one, vault_contract_two, vault_contract_three, vault_contract_four, accounts):
     owner, operator, someoneelse, someone, newcontract = accounts[:5]
@@ -596,6 +610,9 @@ def test_addVault(governance_contract, vault_contract_one, vault_contract_two, v
 
     av = governance_contract.addVault(vault_contract_three, sender=owner)
 
+    for i in range(22):
+        #inject 22 more "vaults"
+        governance_contract.addVault(random_address(), sender=owner)
     #Test if i can add a vault when len(VaultList) = MAX_VAULTS
     with ape.reverts():
         av = governance_contract.addVault(vault_contract_four, sender=owner)
@@ -1029,7 +1046,7 @@ def test_strategyDemo(prompt, governance_contract, vault_contract_one, vault_con
     #Submit a Strategy\
     print("Proposer submits strategy for Adapter vault to governance contract")
     print("")
-    sq = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)   
+    sq = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)   
     w3 = Web3()
     cont = w3.eth.contract(address=governance_contract.address, abi=json.loads(project.contracts["Governance"].model_dump_json())["abi"])
     # print(sp)
@@ -1092,7 +1109,7 @@ def test_strategyDemo(prompt, governance_contract, vault_contract_one, vault_con
     #Submit a Strategy
     print("Proposer submits new strategy for Adapter vault to governance contract")
     print("")
-    sp = governance_contract.submitStrategy(ProposedStrategyTwo, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategyTwo, vault_contract_one, sender=someone)
     logs = cont.events.StrategyProposal.get_logs(fromBlock=sp.block_number, toBlock=sp.block_number)
     assert len(logs) == 1
     print("")
@@ -1146,7 +1163,7 @@ def test_strategyDemo(prompt, governance_contract, vault_contract_one, vault_con
     #Submit another strategy
     print("Proposer submits strategy for Adapter vault to governance contract")
     print("")
-    sp = governance_contract.submitStrategy(ProposedStrategyThree, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategyThree, vault_contract_one, sender=someone)
     logs = cont.events.StrategyProposal.get_logs(fromBlock=sp.block_number, toBlock=sp.block_number)
     assert len(logs) == 1
     print("")
@@ -1210,7 +1227,7 @@ def test_strategyDemo(prompt, governance_contract, vault_contract_one, vault_con
  #Submit another strategy
     print("Proposer submits strategy for Adapter vault to governance contract")
     print("")
-    sp = governance_contract.submitStrategy(ProposedStrategyFour, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategyFour, vault_contract_one, sender=someone)
     logs = cont.events.StrategyProposal.get_logs(fromBlock=sp.block_number, toBlock=sp.block_number)
     assert len(logs) == 1
     print("")
@@ -1279,7 +1296,7 @@ def test_activateMultipleStrategies(governance_contract, vault_contract_one, vau
     governance_contract.addVault(vault_contract_two, sender=owner)    
 
     #Submit a Strategy
-    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=owner)
+    sp = governance_contract.submitStrategy(ProposedStrategy, vault_contract_one, sender=someone)
 
     print("Got here 1!")
     print(sp.logs)
@@ -1318,7 +1335,7 @@ def test_activateMultipleStrategies(governance_contract, vault_contract_one, vau
     print("Got here 6!")
 
     #Submit another Strategy
-    sq = governance_contract.submitStrategy(ProposedStrategyTwo, vault_contract_two, sender=owner)
+    sq = governance_contract.submitStrategy(ProposedStrategyTwo, vault_contract_two, sender=someone)
 
     print("Got here 7!")    
 

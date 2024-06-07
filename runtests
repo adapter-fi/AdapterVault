@@ -1,4 +1,4 @@
 #!/usr/bin/bash
 
-ape test --network :mainnet-fork:hardhat $1 $2 $3 $4
+venv-run --venv .venv_ape ape test --network :mainnet-fork:hardhat --ignore tests_boa $1 $2 $3 $4
 

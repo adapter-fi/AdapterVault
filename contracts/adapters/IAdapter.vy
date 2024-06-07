@@ -88,3 +88,16 @@ def claimRewards(claimant: address):
         i.e. vault owner for further swapping.
     """
     pass
+
+@external
+@view
+def managed_tokens() -> DynArray[address, 10]:
+    """
+    @notice Returns a list of tokens this addapter is exclusively responsible for
+    @dev
+        The list of addresses returned is exclusively handled by this adapter.
+        The vault must not under any circumstance allow multiple adapters to
+        manage the same token address.
+        IMPORTANT: This list cannot change during the lifecycle of the adapter.
+    """
+    return empty(DynArray[address, 10])

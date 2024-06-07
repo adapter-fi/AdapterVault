@@ -2,12 +2,10 @@
 #pragma evm-version cancun
 
 """
-
 @title Governance Contract
 @license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
 @author BiggestLab
 @notice Governance for AdapterVault
-
 """
 event StrategyWithdrawal:
     Nonce: uint256
@@ -97,7 +95,7 @@ struct Strategy:
 contractOwner: public(address)
 MAX_GUARDS: constant(uint256) = 5
 MAX_ADAPTERS: constant(uint256) = 5
-MAX_VAULTS: constant(uint256) = 3
+MAX_VAULTS: constant(uint256) = 25
 DEFAULT_MIN_PROPOSER_PAYOUT: constant(uint256) = 0  # TODO: Need a reasonable value here based on expected gas costs of paying proposal fees.
 LGov: public(DynArray[address, MAX_GUARDS])
 TDelay: public(uint256)
@@ -127,17 +125,13 @@ def __init__(contractOwner: address, _tdelay: uint256):
     self.contractOwner = contractOwner
     self.TDelay = _tdelay
     if _tdelay == empty(uint256):
-        self.TDelay = 21600
+        self.TDelay = 259200 # 30 days vs 21600 (6 hours)
 
 
-@external
-def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
-    """
-    @notice This function provides a way to Propose a Strategy for a specific Vault
-    @param strategy The Proposed Strategy (for a Vault) to evaluate 
-    @param vault The vault address (for the Proposed Strategy) to evaluate
-    @return The nonce for a strategy submitted for a specific vault
-    """
+@internal
+def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
+    assert msg.sender in self.LGov, "Only Guards may submit strategies."
+
     if self.NextNonceByVault[vault] == 0:
         self.NextNonceByVault[vault] += 1
 
@@ -153,15 +147,21 @@ def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
 
     # Confirm there's no currently pending strategy for this vault so we can replace the old one.
 
-            # First is it the same as the current one?
-            # Otherwise has it been withdrawn? 
-            # Otherwise, has it been short circuited down voted? 
-            # Has the period of protection from being replaced expired already?         
-    assert  (self.CurrentStrategyByVault[vault].Nonce == pending_strat.Nonce) or \
-            (pending_strat.Withdrawn == True) or \
-            len(pending_strat.VotesReject) > 0 and \
-            (len(pending_strat.VotesReject) >= pending_strat.no_guards/2) or \
-            (convert(block.timestamp, decimal) > (convert(pending_strat.TSubmitted, decimal)+(convert(self.TDelay, decimal)))), "Invalid proposed strategy!"
+    # First is it the same as the current one?
+    # Otherwise has it been withdrawn? 
+    # Otherwise, has it been short circuited down voted? 
+    # Has the period of protection from being replaced expired already?
+    reject_votes : uint256 = 0
+    for guard_addr in self.LGov:
+        if guard_addr in pending_strat.VotesReject:
+            reject_votes += 1
+
+    nonces_match : bool =  (self.CurrentStrategyByVault[vault].Nonce == pending_strat.Nonce)                
+    at_least_one_reject : bool = reject_votes > 0
+    strategy_rejected : bool = (reject_votes >= pending_strat.no_guards/2+1)
+    strategy_timedout : bool = (convert(block.timestamp, decimal) > (convert(pending_strat.TSubmitted, decimal)+(convert(self.TDelay, decimal))))
+    assert  nonces_match or (pending_strat.Withdrawn == True) or at_least_one_reject and \
+            strategy_rejected or strategy_timedout, "Invalid proposed strategy!"
 
     # Confirm msg.sender Eligibility
     # Confirm msg.sender is not blacklisted
@@ -192,6 +192,17 @@ def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     log StrategyProposal(strat, msg.sender, strat.LPRatios, strategy.min_proposer_payout, vault)
 
     return strat.Nonce
+
+
+@external
+def submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
+    """
+    @notice This function provides a way to Propose a Strategy for a specific Vault
+    @param strategy The Proposed Strategy (for a Vault) to evaluate 
+    @param vault The vault address (for the Proposed Strategy) to evaluate
+    @return The nonce for a strategy submitted for a specific vault
+    """
+    return self._submitStrategy(strategy, vault)
 
 
 @external
@@ -259,7 +270,7 @@ def endorseStrategy(Nonce: uint256, vault: address):
 
 
 @external
-def rejectStrategy(Nonce: uint256, vault: address):
+def rejectStrategy(Nonce: uint256, vault: address, replacementStrategy : ProposedStrategy = empty(ProposedStrategy)):
     """
     @notice This function provides a way to vote against a proposed strategy for a specific vault
     @param Nonce Integer (for the Proposed Strategy, by Vault) to evaluate
@@ -286,8 +297,18 @@ def rejectStrategy(Nonce: uint256, vault: address):
     assert msg.sender not in pending_strat.VotesReject
     assert msg.sender not in pending_strat.VotesEndorse
 
+    strategy_already_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
+
     #Vote to reject strategy
     self.PendingStrategyByVault[vault].VotesReject.append(msg.sender)
+
+    strategy_ultimately_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
+
+    # If there is a replacement strategy suggested and this is the vote that ultimately decides the thing...
+    if replacementStrategy.APYNow != 0: # Can't test against emtpty(ProposedStrategy) due to Vyper issue #2638.
+        if (not strategy_already_rejected) and strategy_ultimately_rejected:    
+            # Replace the current pending but rejected strategy with this new one.
+            self._submitStrategy(replacementStrategy, vault)
 
     log StrategyVote(Nonce, vault, msg.sender, True)
 
@@ -312,9 +333,17 @@ def activateStrategy(Nonce: uint256, vault: address):
     assert (pending_strat.Withdrawn == False), "Strategy is withdrawn."
 
     #Confirm strategy is approved by guards
-    assert (len(pending_strat.VotesEndorse) >= (len(self.LGov)/2)+1) or \
+    endorse_votes : uint256 = 0
+    reject_votes : uint256 = 0
+    for guard_addr in self.LGov:
+        if guard_addr in pending_strat.VotesEndorse:
+            endorse_votes += 1
+        if guard_addr in pending_strat.VotesReject:
+            reject_votes += 1
+
+    assert (endorse_votes >= (len(self.LGov)/2)+1) or \
            ((pending_strat.TSubmitted + self.TDelay) < block.timestamp), "Premature activation with insufficience endorsements."
-    assert len(pending_strat.VotesReject) <= len(pending_strat.VotesEndorse), "Strategy was rejected."
+    assert reject_votes <= endorse_votes, "Strategy was rejected."
 
     #Confirm Pending Strategy is the Strategy we want to activate
     assert pending_strat.Nonce == Nonce, "Incorrect strategy nonce."
@@ -342,7 +371,7 @@ def addGuard(GuardAddress: address):
     assert len(self.LGov) <= MAX_GUARDS, "Cannot add anymore guards"
 
     #Check to see that the Guard being added is a valid address
-    assert GuardAddress != ZERO_ADDRESS, "Cannot add ZERO_ADDRESS"
+    assert GuardAddress != empty(address), "Cannot add ZERO_ADDRESS"
 
     #Check to see that GuardAddress is not already in self.LGov
     assert GuardAddress not in self.LGov, "Guard already exists"
@@ -398,7 +427,7 @@ def swapGuard(OldGuardAddress: address, NewGuardAddress: address):
     assert msg.sender == self.contractOwner, "Cannot swap guard unless you are contract owner"
 
     #Check that the guard we are swapping in is a valid address
-    assert NewGuardAddress != ZERO_ADDRESS, "Cannot add ZERO_ADDRESS"
+    assert NewGuardAddress != empty(address), "Cannot add ZERO_ADDRESS"
 
     #Check that the guard we are swapping in is not on the list of guards already
     assert NewGuardAddress not in self.LGov, "New Guard is already a Guard."
@@ -464,7 +493,7 @@ def replaceGovernance(NewGovernance: address, vault: address):
     assert NewGovernance != self
 
     #Check if new contract address is valid address
-    assert NewGovernance != ZERO_ADDRESS
+    assert NewGovernance != empty(address)
 
     #Check if sender has voted, if not log new vote
     if self.VotesGCByVault[vault][msg.sender] != NewGovernance: 
@@ -480,6 +509,11 @@ def replaceGovernance(NewGovernance: address, vault: address):
 
     if len(self.LGov) == VoteCount:
         AdapterVault(vault).replaceGovernanceContract(NewGovernance)
+        
+        # Clear out the old votes.
+        for guard_addr in self.LGov:
+            self.VotesGCByVault[vault][guard_addr] = empty(address)
+
 
     log GovernanceContractChanged(Voter, NewGovernance, VoteCount, TotalGuards)
 
@@ -497,7 +531,7 @@ def addVault(vault: address):
     assert len(self.VaultList) <= MAX_VAULTS
 
     # Must be a real vault address
-    assert vault != ZERO_ADDRESS
+    assert vault != empty(address)
 
     # Must not already be in vault list
     assert vault not in self.VaultList
@@ -555,7 +589,7 @@ def swapVault(OldVaultAddress: address, NewVaultAddress: address):
     assert msg.sender == self.contractOwner
 
     #Check that the vault we are swapping in is a valid address
-    assert NewVaultAddress != ZERO_ADDRESS
+    assert NewVaultAddress != empty(address)
 
     #Check that the vault we are swapping in is not on the list of vaults already
     assert NewVaultAddress not in self.VaultList
