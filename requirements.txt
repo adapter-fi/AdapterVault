@@ -1,4 +1,5 @@
 ipython>=3.11
+web3
 annotated-types==0.7.0
 asttokens==2.4.1
 attrs==23.2.0
