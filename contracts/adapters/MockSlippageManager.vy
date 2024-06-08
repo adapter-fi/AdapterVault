@@ -63,12 +63,14 @@ def _update_plan_usage(_orig_val: uint256, _final_val: uint256, _plan: SlippageP
 
 @external    
 def slippage_result(_value : uint256) -> uint256:
-    return _value
-    # plan : SlippagePlan = self.plans[self.plan_pos]
-    # result : uint256 = _value
-    # if plan.percent > 0:
-    #     result = result * plan.percent / 100
+    if len(self.plans) == 0:
+        return _value
+    plan : SlippagePlan = self.plans[self.plan_pos]
+    result : uint256 = _value
+    if plan.percent > 0:
+        result = result * plan.percent / 100
 
-    # self._update_plan_usage(_value, result, plan)
+    self._update_plan_usage(_value, result, plan)
 
-    # return result
+    return result
+
