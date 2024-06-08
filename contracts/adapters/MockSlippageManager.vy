@@ -15,18 +15,14 @@ MAX_USAGE : constant(uint256) = 100
 MAX_PLANS : constant(uint256) = 20
 
 plans : public(DynArray[SlippagePlan, MAX_PLANS])
-#last_plan_pos : public(uint256)
 plan_pos : public(uint256)
 history : public(DynArray[SlippageExecution, MAX_USAGE])
-history_pos : public(uint256)
 
 @external
 def __init__():
     self.plans = empty(DynArray[SlippagePlan, MAX_PLANS])
-    #self.last_plan_pos = 0
     self.plan_pos = 0
     self.history = empty(DynArray[SlippageExecution, MAX_USAGE])
-    self.history_pos = 0
 
 
 @external
@@ -41,24 +37,19 @@ def set_slippage(_percent: uint256, _qty: uint256 = 0):
     plan : SlippagePlan = SlippagePlan({percent: _percent,
                                         qty: _qty})
     self.plans.append(plan)
-    #self.last_plan_pos += 1
 
 
 @internal
 def _update_plan_usage(_orig_val: uint256, _final_val: uint256, _plan: SlippagePlan):
     exec : SlippageExecution = empty(SlippageExecution)
     if len(self.history) > 0: 
-        exec = self.history[self.history_pos]
+        exec = self.history[len(self.history)-1]
     exec.plan_pos = self.plan_pos
     exec.usage += 1
     exec.val_in = _orig_val
     exec.val_out = _final_val
 
-    #if self.history_pos == 0:
-    #    self.history[self.history_pos] = exec
-    #else:
     self.history.append(exec)
-    self.history_pos += 1
 
     # Once a SlippagePlan has a qty of zero it stays forever.
     # (Unless a slippage_result was requested before any plan was set.)
@@ -67,6 +58,7 @@ def _update_plan_usage(_orig_val: uint256, _final_val: uint256, _plan: SlippageP
         if exec.usage == _plan.qty:
             # Next plan.
             self.plan_pos += 1
+            assert False, "NOT YET!"
 
 
 @external    
