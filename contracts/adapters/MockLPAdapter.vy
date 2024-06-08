@@ -16,12 +16,36 @@ aoriginalAsset: immutable(address)
 awrappedAsset: immutable(address)
 adapterLPAddr: immutable(address)
 
+slippage_percentage: public(uint256)
+
 
 @external
 def __init__(_originalAsset: address, _wrappedAsset: address):
     aoriginalAsset = _originalAsset
     awrappedAsset = _wrappedAsset
     adapterLPAddr = self
+
+    self.slippage_percentage = 0
+
+
+@external
+def setSlippage(_percent : uint256):
+    self.slippage_percentage = _percent
+
+
+@external
+def clearSlippage():
+    self.slippage_percentage = 0    
+
+
+@internal
+@view
+def _slippageResult(_value : uint256) -> uint256:
+    #return _value
+    if self.slippage_percentage == 0: 
+        return _value
+    assert False, "THIS IS BROKE!"
+    return _value * self.slippage_percentage / 100
 
 
 @external
@@ -44,7 +68,8 @@ def _convertToShares(_asset_amount: uint256) -> uint256:
     if shareQty == 0 or assetQty == 0: return _asset_amount
     
     sharesPerAsset : decimal = (convert(shareQty, decimal) * 10000.0 / convert(assetQty, decimal)) + 1.0
-    return convert(convert(_asset_amount, decimal) * sharesPerAsset / 10000.0, uint256)
+    value : uint256 = convert(convert(_asset_amount, decimal) * sharesPerAsset / 10000.0, uint256)
+    return self._slippageResult(value)
 
 
 @external
@@ -64,7 +89,8 @@ def _convertToAssets(_share_amount: uint256) -> uint256:
     if shareQty == 0 or assetQty == 0: return _share_amount
     
     assetsPerShare : decimal = convert(assetQty, decimal) / convert(shareQty, decimal)
-    return convert(convert(_share_amount, decimal) * assetsPerShare, uint256)
+    value : uint256 = convert(convert(_share_amount, decimal) * assetsPerShare, uint256)
+    return self._slippageResult(value)
 
 
 @external
@@ -98,7 +124,8 @@ def totalAssets() -> uint256:
 @nonpayable
 def deposit(asset_amount: uint256, pregen_info: Bytes[4096]=empty(Bytes[4096])):
     # Move funds into the LP.
-    ERC20(aoriginalAsset).transfer(adapterLPAddr, asset_amount, default_return_value=True)
+    slippage_assets : uint256 = self._slippageResult(asset_amount)
+    ERC20(aoriginalAsset).transfer(adapterLPAddr, slippage_assets, default_return_value=True)
 
     # Return LP wrapped assets to 4626 vault.
     # TODO : Ignore wrapped asset for now!
@@ -123,9 +150,10 @@ def withdraw(asset_amount: uint256 , withdraw_to: address, pregen_info: Bytes[40
     assert ERC20(aoriginalAsset).allowance(adapterLPAddr, self) >= asset_amount, "NO APPROVAL!"
 
     # Move funds into the destination accout.
-    ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, asset_amount, default_return_value=True)
+    slippage_assets :uint256 = self._slippageResult(asset_amount)
+    ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, slippage_assets, default_return_value=True)
     
-    return asset_amount
+    return slippage_assets
 
 @external
 def claimRewards(claimant: address):
