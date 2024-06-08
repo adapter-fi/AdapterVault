@@ -60,11 +60,13 @@ def vault(deployer, broke_erc20, funds_alloc, gov, adapter):
             "vault",
             18,
             broke_erc20,
-            [adapter,],
+            [],
             gov,
             funds_alloc,
             Decimal(2.0)
         )
+
+        v.add_adapter(adapter)
 
     strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
     strategy[0] = (adapter.address, 1)
