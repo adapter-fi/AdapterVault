@@ -153,6 +153,9 @@ def deposit(asset_amount: uint256, pregen_info: Bytes[4096]=empty(Bytes[4096])):
     # Move funds into the LP.
     slippage_assets : uint256 = self._slippage_result(asset_amount)
     ERC20(aoriginalAsset).transfer(adapterLPAddr, slippage_assets, default_return_value=True)
+    if asset_amount > slippage_assets:
+        # Burn the loss
+        ERC20(aoriginalAsset).transfer(empty(address), asset_amount - slippage_assets, default_return_value=True)
 
     # Return LP wrapped assets to 4626 vault.
     # TODO : Ignore wrapped asset for now!
@@ -179,6 +182,9 @@ def withdraw(asset_amount: uint256 , withdraw_to: address, pregen_info: Bytes[40
     # Move funds into the destination accout.
     slippage_assets :uint256 = self._slippage_result(asset_amount)
     ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, slippage_assets, default_return_value=True)
+    if asset_amount > slippage_assets:
+        # Burn the loss
+        ERC20(aoriginalAsset).transfer(empty(address), asset_amount - slippage_assets, default_return_value=True)
     
     return slippage_assets
 
