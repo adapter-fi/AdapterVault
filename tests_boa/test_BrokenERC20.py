@@ -46,7 +46,9 @@ def funds_alloc(deployer):
 @pytest.fixture
 def adapter(deployer, broke_erc20, erc20):
     with boa.env.prank(deployer):
-        a = boa.load("contracts/adapters/MockLPAdapter.vy", broke_erc20, erc20)
+        m = boa.load("contracts/adapters/MockSlippageManager.vy")
+        a = boa.load("contracts/adapters/MockLPSlippageAdapter.vy", broke_erc20, erc20, m)
+
     return a
 
 @pytest.fixture

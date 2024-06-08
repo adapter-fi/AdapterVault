@@ -9,6 +9,9 @@ interface mintableERC20:
     def mint(_receiver: address, _amount: uint256) -> uint256: nonpayable
     def burn(_value: uint256): nonpayable
     
+interface MockSlippageManager:
+    def slippage_result(_value : uint256) -> uint256: nonpayable        
+    def set_slippage(_percent: uint256, _qty: uint256 = 0): nonpayable
 
 implements: IAdapter
 
@@ -16,25 +19,27 @@ aoriginalAsset: immutable(address)
 awrappedAsset: immutable(address)
 adapterLPAddr: immutable(address)
 
-slippage_contract: immutable(address) 
+slippage_manager: immutable(address) 
 
 
 @external
-def __init__(_originalAsset: address, _wrappedAsset: address, _slippage_contract: address):
+def __init__(_originalAsset: address, _wrappedAsset: address, _slippage_manager: address):
     aoriginalAsset = _originalAsset
     awrappedAsset = _wrappedAsset
     adapterLPAddr = self
 
-    slippage_contract = _slippage_contract
+    slippage_manager = _slippage_manager
+
+
+@external
+def set_slippage(_percent: uint256, _qty: uint256 = 0):
+    MockSlippageManager(slippage_manager).set_slippage(_percent, _qty)
 
 
 @internal
-def _slippageResult(_value : uint256) -> uint256:
-    return _value
-    #if self.slippage_contract == empty(address): 
-    #    return _value
-    #assert False, "THIS IS BROKE!"
-    #return _value * self.slippage_percentage / 100
+def _slippage_result(_value : uint256) -> uint256:
+    result : uint256 = MockSlippageManager(slippage_manager).slippage_result(_value)
+    return result
 
 
 @external
@@ -58,7 +63,7 @@ def _convertToShares(_asset_amount: uint256) -> uint256:
     
     sharesPerAsset : decimal = (convert(shareQty, decimal) * 10000.0 / convert(assetQty, decimal)) + 1.0
     value : uint256 = convert(convert(_asset_amount, decimal) * sharesPerAsset / 10000.0, uint256)
-    return self._slippageResult(value)
+    return value
 
 
 @external
@@ -79,7 +84,7 @@ def _convertToAssets(_share_amount: uint256) -> uint256:
     
     assetsPerShare : decimal = convert(assetQty, decimal) / convert(shareQty, decimal)
     value : uint256 = convert(convert(_share_amount, decimal) * assetsPerShare, uint256)
-    return self._slippageResult(value)
+    return value
 
 
 @external
@@ -113,7 +118,7 @@ def totalAssets() -> uint256:
 @nonpayable
 def deposit(asset_amount: uint256, pregen_info: Bytes[4096]=empty(Bytes[4096])):
     # Move funds into the LP.
-    slippage_assets : uint256 = self._slippageResult(asset_amount)
+    slippage_assets : uint256 = self._slippage_result(asset_amount)
     ERC20(aoriginalAsset).transfer(adapterLPAddr, slippage_assets, default_return_value=True)
 
     # Return LP wrapped assets to 4626 vault.
@@ -139,7 +144,7 @@ def withdraw(asset_amount: uint256 , withdraw_to: address, pregen_info: Bytes[40
     assert ERC20(aoriginalAsset).allowance(adapterLPAddr, self) >= asset_amount, "NO APPROVAL!"
 
     # Move funds into the destination accout.
-    slippage_assets :uint256 = self._slippageResult(asset_amount)
+    slippage_assets :uint256 = self._slippage_result(asset_amount)
     ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, slippage_assets, default_return_value=True)
     
     return slippage_assets
