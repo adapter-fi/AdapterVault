@@ -136,6 +136,9 @@ def test_vault(vault, deployer, trader, dai, adapter_two_percent_loss):
         print("\ntest_vault use case:")
         print("adapter now has %s dai." % dai.balanceOf(adapter_two_percent_loss))
 
+        local, adapters, total, ratios = vault.getCurrentBalances()
+        print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
+
         shares = vault.deposit(1000, trader)
 
         print("After 1000 deposit got %s shares for a total balance of %s shares.." % (shares, vault.balanceOf(trader)))
@@ -145,6 +148,9 @@ def test_vault(vault, deployer, trader, dai, adapter_two_percent_loss):
         print("first history = {percent : %s, qty : %s, usage : %s, val_in: %s, val_out : %s}" % (percent, qty, usage, val_in, val_out))
 
         print("adapter now has %s dai." % dai.balanceOf(adapter_two_percent_loss))
+
+        local, adapters, total, ratios = vault.getCurrentBalances()
+        print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
         
         print("Do it again.")
 
@@ -160,7 +166,8 @@ def test_vault(vault, deployer, trader, dai, adapter_two_percent_loss):
 
         print("adapter now has %s dai." % dai.balanceOf(adapter_two_percent_loss))
 
-
+        local, adapters, total, ratios = vault.getCurrentBalances()
+        print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
 
 
     #     assert vault.balanceOf(trader) == 10000
