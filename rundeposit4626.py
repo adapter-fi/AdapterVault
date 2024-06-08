@@ -30,8 +30,9 @@ with boa.env.prank(owner):
 
     alloc = boa.load("contracts/FundsAllocator.vy")
     
-    vault = boa.load("contracts/AdapterVault.vy","BigVault","vlt",2, dai, [adapt_junk,], gov, alloc, Decimal(2.0))
-
+    vault = boa.load("contracts/AdapterVault.vy","BigVault","vlt",2, dai, gov, alloc, Decimal(2.0))
+    vault.add_adapter(adapt_junk)
+    
 strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
 strategy[0] = (adapt_junk.address, 1)
 
