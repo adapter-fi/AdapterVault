@@ -157,14 +157,13 @@ event OwnerChanged:
 
 
 @external
-def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20asset : address, _adapters: DynArray[address, MAX_ADAPTERS], _governance: address, _funds_allocator: address, _max_slippage_percent: decimal):
+def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20asset : address, _governance: address, _funds_allocator: address, _max_slippage_percent: decimal):
     """
     @notice Constructor for 4626 contract.
     @param _name of shares token
     @param _symbol identifier of shares token
     @param _decimals increment for division of shares token 
     @param _erc20asset : contract address for asset ERC20 token
-    @param _adapters : list of addresses for initial Adapters (could be none) 
     @param _governance contract address
     @param _funds_allocator contract address
     @param _max_slippage_percent default maximum acceptable slippage for deposits/withdraws as a percentage
@@ -177,11 +176,6 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     symbol = _symbol
     decimals = _decimals
 
-    # Is this likely to be an actual ERC20 contract?
-    response: Bytes[32] = empty(Bytes[32])
-    result_ok: bool = empty(bool)
-    result_ok, response = raw_call(_erc20asset, _abi_encode(self, method_id=method_id("balanceOf(address)")), max_outsize=32, value=convert(self, uint256), is_static_call=True, revert_on_failure=False)
-    assert result_ok == True, "Doesn't appear to be an ERC20 contract."
     asset = _erc20asset
 
     self.owner = msg.sender
@@ -193,9 +187,6 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     log OwnerChanged(msg.sender, empty(address))
     log GovernanceChanged(_governance, empty(address))
     log FundsAllocatorChanged(_funds_allocator, empty(address))
-
-    for adapter in _adapters:
-        self._add_adapter(adapter)        
 
 
 @external

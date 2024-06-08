@@ -126,8 +126,9 @@ def vault_contract_one(governance_contract, owner, project, accounts, dai, funds
 
     owner, operator, someoneelse, someone, newcontract, currentvault, currentgovernance = accounts[:7]
 
-    vcontractone = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, ADAPTERS, governance_contract, funds_alloc, "2.0")
-
+    vcontractone = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, governance_contract, funds_alloc, "2.0")
+    for adapter in ADAPTERS:
+        vcontractone.add_adapter(adapter, sender=owner)
     return vcontractone
 
 @pytest.fixture
@@ -135,7 +136,9 @@ def vault_contract_two(governance_contract, owner, project, accounts, dai, funds
 
     owner, operator, someoneelse, someone, newcontract, currentvault, currentgovernance = accounts[:7]
 
-    vcontracttwo = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, ADAPTERS, governance_contract, funds_alloc, "2.0")
+    vcontracttwo = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, governance_contract, funds_alloc, "2.0")
+    for adapter in ADAPTERS:
+        vcontracttwo.add_adapter(adapter, sender=owner)
 
     return vcontracttwo
 
@@ -144,7 +147,9 @@ def vault_contract_three(governance_contract, owner, project, accounts, dai, fun
 
     owner, operator, someoneelse, someone, newcontract, currentvault, currentgovernance = accounts[:7]
 
-    vcontractthree = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, ADAPTERS, governance_contract, funds_alloc, "2.0")
+    vcontractthree = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, governance_contract, funds_alloc, "2.0")
+    for adapter in ADAPTERS:
+        vcontractthree.add_adapter(adapter, sender=owner)
 
     return vcontractthree
 
@@ -153,7 +158,9 @@ def vault_contract_four(governance_contract, owner, project, accounts, dai, fund
 
     owner, operator, someoneelse, someone, newcontract, currentvault, currentgovernance = accounts[:7]
 
-    vcontractfour = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, ADAPTERS, governance_contract, funds_alloc, "2.0")
+    vcontractfour = owner.deploy(project.AdapterVault, NAME, SYMBOL, DECIMALS, dai, governance_contract, funds_alloc, "2.0")
+    for adapter in ADAPTERS:
+        vcontractfour.add_adapter(adapter, sender=owner)
 
     return vcontractfour
 

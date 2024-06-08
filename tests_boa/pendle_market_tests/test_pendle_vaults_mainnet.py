@@ -116,7 +116,6 @@ def _adaptervault(deployer, asset, trader, funds_alloc, default_slippage):
             "pena",
             18,
             asset,
-            [],
             deployer,
             funds_alloc,
             Decimal(default_slippage)

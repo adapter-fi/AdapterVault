@@ -46,7 +46,9 @@ def funds_alloc(deployer):
 @pytest.fixture
 def adapter(deployer, broke_erc20, erc20):
     with boa.env.prank(deployer):
-        a = boa.load("contracts/adapters/MockLPAdapter.vy", broke_erc20, erc20)
+        m = boa.load("contracts/adapters/MockSlippageManager.vy")
+        a = boa.load("contracts/adapters/MockLPSlippageAdapter.vy", broke_erc20, erc20, m)
+
     return a
 
 @pytest.fixture
@@ -58,11 +60,12 @@ def vault(deployer, broke_erc20, funds_alloc, gov, adapter):
             "vault",
             18,
             broke_erc20,
-            [adapter,],
             gov,
             funds_alloc,
             Decimal(2.0)
         )
+
+        v.add_adapter(adapter)
 
     strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
     strategy[0] = (adapter.address, 1)

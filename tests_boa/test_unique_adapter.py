@@ -49,7 +49,6 @@ def _adaptervault(deployer, asset, funds_alloc):
             "pena",
             18,
             asset,
-            [],
             deployer,
             funds_alloc,
             Decimal(2.0)
