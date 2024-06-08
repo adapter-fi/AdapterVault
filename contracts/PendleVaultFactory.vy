@@ -40,6 +40,7 @@ interface AdapterVault:
     def set_strategy(Proposer: address, Strategies: AdapterStrategy[MAX_ADAPTERS], min_proposer_payout: uint256) -> bool: nonpayable
     def replaceGovernanceContract(NewGovernance: address) -> bool: nonpayable
     def replaceOwner(_new_owner: address) -> bool: nonpayable
+    def add_adapter(_adapter: address) -> bool: nonpayable
 
 @external
 def __init__():
@@ -135,30 +136,32 @@ def deploy_pendle_vault(
         self.pendle_router,
         self.pendle_router_static,
         _pendle_market,
-        self.pendle_oracle
+        self.pendle_oracle,
+        code_offset=3
     )
     #deploy vault using blueprint
-    adapters: DynArray[address, MAX_ADAPTERS] = empty(DynArray[address, MAX_ADAPTERS])
-    adapters.append(adapter) 
     vault: address = create_from_blueprint(
         self.adapter_vault_blueprint,
         _name,
         _symbol,
         _decimals,
         _asset,
-        adapters,
-        self.owner,
+        self,
         self.funds_allocator_impl,
-        _max_slippage_percent
+        _max_slippage_percent,
+        code_offset=3
     )
+    AdapterVault(vault).add_adapter(adapter)
     #initialize the vault with strategy.
     strategy: AdapterStrategy[MAX_ADAPTERS] = empty(AdapterStrategy[MAX_ADAPTERS]) 
     strategy[0].adapter = adapter
     strategy[0].ratio = 1
-    AdapterVault(vault).set_strategy(msg.sender, strategy, 0)
+    AdapterVault(vault).set_strategy(msg.sender, strategy, 10000)
     #mint some shares (take asset from owner)
     ERC20(_asset).transferFrom(msg.sender, self, _init_mint_amount)
-    ERC4626(vault).deposit(_init_mint_amount, self)
+    ERC20(_asset).approve(vault, _init_mint_amount)
+    #Because of rounding issues
+    ERC4626(vault).deposit(ERC20(_asset).balanceOf(self), self)
     #burn resulting shares
     ERC20(vault).transfer(empty(address), ERC20(vault).balanceOf(self))
     #assign governance contract

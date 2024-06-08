@@ -5,11 +5,12 @@ import json
 from boa.environment import Env
 from web3 import Web3
 import eth_abi
-
+from decimal import Decimal
 
 from tests_boa.conftest import forked_env_mainnet
 
 PENDLE_ROUTER="0x00000000005BBB0EF59571E58418F9a4357b68A0"
+NOTHING="0x0000000000000000000000000000000000000000"
 PENDLE_ROUTER_STATIC="0x263833d47eA3fA4a30f269323aba6a107f9eB14C"
 PENDLE_MARKET="0xd0354d4e7bcf345fb117cabe41acadb724eccca2" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
 STETH="0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
@@ -42,6 +43,7 @@ def trader(setup_chain):
 
 @pytest.fixture
 def governance(setup_chain):
+    #Just using EOA for this
     acc = boa.env.generate_address(alias="governance")
     boa.env.set_balance(acc, 1000*10**18)
     return acc
@@ -129,11 +131,70 @@ def pendle_factory(setup_chain, deployer, steth, pendleOracle):
         pa = boa.load("contracts/PendleVaultFactory.vy")
     return pa
 
+@pytest.fixture
+def funds_alloc(setup_chain, deployer):
+    with boa.env.prank(deployer):
+        f = boa.load("contracts/FundsAllocator.vy")
+    return f
 
-def test_vault_factory(setup_chain, pendle_factory, deployer, attacker, trader, vault_blueprint, pendle_adapter_blueprint):
+
+def test_vault_factory(setup_chain, pendle_factory, deployer, steth, trader, vault_blueprint, pendle_adapter_blueprint, funds_alloc, governance):
     #Test only owner can change owner
     with boa.env.prank(trader):
         with boa.reverts("Only existing owner can replace the owner."):
             pendle_factory.replace_owner(trader)
         with boa.reverts("Only owner can update contracts"):
             pendle_factory.update_blueprints(vault_blueprint, pendle_adapter_blueprint)
+        with boa.reverts("Only owner can update contracts"):
+            pendle_factory.update_funds_allocator(funds_alloc)
+        with boa.reverts("Only owner can update contracts"):
+            pendle_factory.update_governance(governance)
+        with boa.reverts("Only owner can update contracts"):
+            pendle_factory.update_pendle_contracts(
+                PENDLE_ROUTER,
+                PENDLE_ROUTER_STATIC,
+                PENDLE_ORACLE
+            )
+    with boa.env.prank(deployer):
+        pendle_factory.replace_owner(trader)
+
+    #Now trader should be able to do stuff, but with missing bits
+    with boa.env.prank(trader):
+        with boa.reverts("adapter_vault_blueprint must be defined"):
+            pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        pendle_factory.update_blueprints(vault_blueprint, NOTHING)
+        with boa.reverts("pendle_adapter_blueprint must be defined"):
+            pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        pendle_factory.update_blueprints(vault_blueprint, pendle_adapter_blueprint)
+        with boa.reverts("funds_allocator_impl must be defined"):
+            pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        pendle_factory.update_funds_allocator(funds_alloc)
+        with boa.reverts("governance_impl must be defined"):
+            pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        pendle_factory.update_governance(governance)
+        with boa.reverts("pendle_router must be defined"):
+            pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        pendle_factory.update_pendle_contracts(
+            PENDLE_ROUTER,
+            NOTHING,
+            NOTHING
+        )
+        with boa.reverts("pendle_router_static must be defined"):
+            pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        pendle_factory.update_pendle_contracts(
+            PENDLE_ROUTER,
+            PENDLE_ROUTER_STATIC,
+            NOTHING
+        )
+        with boa.reverts("pendle_oracle must be defined"):
+            pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        pendle_factory.update_pendle_contracts(
+            PENDLE_ROUTER,
+            PENDLE_ROUTER_STATIC,
+            PENDLE_ORACLE
+        )
+        steth.approve(pendle_factory, 10**9)
+        #Finally we can deploy
+        pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        #TODO: Fetch logs... 
+        #TODO: Validate the adapter and vault
