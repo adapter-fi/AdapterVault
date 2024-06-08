@@ -60,7 +60,6 @@ def vault(deployer, broke_erc20, funds_alloc, gov, adapter):
             "vault",
             18,
             broke_erc20,
-            [],
             gov,
             funds_alloc,
             Decimal(2.0)
