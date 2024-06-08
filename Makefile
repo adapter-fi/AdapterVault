@@ -3,7 +3,7 @@ init: check-node-version
 	rm -rf .build
 	rm -rf node_modules
 	pip install -r requirements.txt
-	pip install web3==6.19.0 #will complain about dependencies but we ignore..
+	#pip install web3==6.19.0 #will complain about dependencies but we ignore..
 	python -m venv  .venv_ape
 	venv-run --venv .venv_ape pip install -r requirements.ape.txt
 	npm ci
