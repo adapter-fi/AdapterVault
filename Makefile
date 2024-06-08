@@ -30,7 +30,7 @@ hardhat: check-env check-node-version
 
 .PHONY: test
 test: check-env
-	pytest tests_boa/ --ignore tests_boa/test_transient.py
+	pytest tests_boa/ --ignore tests_boa/test_transient.py $(filter-out $@,$(MAKECMDGOALS))
 
 
 abi-export:

@@ -9,6 +9,7 @@
 from vyper.interfaces import ERC20
 from vyper.interfaces import ERC4626
 from adapters.IAdapter import IAdapter as IAdapter
+
 implements: ERC20
 # BDM HACK! We have some additional optional parameters that it doesn't like.
 # implements: ERC4626
@@ -747,12 +748,12 @@ def _claim_fees(_yield : FeeType, _asset_amount: uint256, pregen_info: DynArray[
         # Unless the person requesting the payout is the current proposer then he must
         # want it anyway.
         if msg.sender == self.current_proposer or strat_fees >= self.min_proposer_payout:
-            ERC20(asset).transfer(self.current_proposer, strat_fees)
+            ERC20(asset).transfer(self.current_proposer, strat_fees, default_return_value=True)
         strat_fees = 0
 
     # Is there anything left over to transfer for Yield? (Which might also include strat)
     if yield_fees + strat_fees > 0:
-        ERC20(asset).transfer(self.owner, yield_fees + strat_fees)    
+        ERC20(asset).transfer(self.owner, yield_fees + strat_fees, default_return_value=True)    
 
     # Clear all caches!        
     self._dirtyAssetCache() 
@@ -1281,7 +1282,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     min_share_value : uint256 = self._convertToAssets(_min_shares, total_starting_assets)
 
     # Move assets to this contract from caller in one go.
-    ERC20(asset).transferFrom(msg.sender, self, _asset_amount)
+    ERC20(asset).transferFrom(msg.sender, self, _asset_amount, default_return_value=True)
 
     # Clear the asset cache for vault but not adapters.
     self._dirtyAssetCache(True, False)
@@ -1361,7 +1362,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
         _asset_amount = current_balance
 
     # Now send assets to _receiver.
-    ERC20(asset).transfer(_receiver, _asset_amount)
+    ERC20(asset).transfer(_receiver, _asset_amount, default_return_value=True)
 
     # Clear the asset cache for vault but not adapters.
     self._dirtyAssetCache(True, False)
