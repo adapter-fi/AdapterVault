@@ -138,7 +138,7 @@ def test_vault(vault, deployer, trader, dai, adapter_two_percent_loss):
 
         shares = vault.deposit(1000, trader)
 
-        print("After 10000 deposit got %s shares for a total balance of %s shares.." % (shares, vault.balanceOf(trader)))
+        print("After 1000 deposit got %s shares for a total balance of %s shares.." % (shares, vault.balanceOf(trader)))
 
         print("len adapter history = ", adapter_two_percent_loss.slip_history_len())
         percent, qty, usage, val_in, val_out = adapter_two_percent_loss.slip_history(0)
@@ -150,7 +150,7 @@ def test_vault(vault, deployer, trader, dai, adapter_two_percent_loss):
 
         shares = vault.deposit(1000, trader)
 
-        print("After 10000 deposit got %s shares for a total balance of %s shares.." % (shares, vault.balanceOf(trader)))
+        print("After 1000 deposit got %s shares for a total balance of %s shares.." % (shares, vault.balanceOf(trader)))
 
         print("len adapter history = ", adapter_two_percent_loss.slip_history_len())
         percent, qty, usage, val_in, val_out = adapter_two_percent_loss.slip_history(0)

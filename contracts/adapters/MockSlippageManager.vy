@@ -63,6 +63,7 @@ def _update_plan_usage(_orig_val: uint256, _final_val: uint256, _plan: SlippageP
 
 @external    
 def slippage_result(_value : uint256) -> uint256:
+    #assert _value == 1000, "Not 1000!"
     if len(self.plans) == 0:
         return _value
     plan : SlippagePlan = self.plans[self.plan_pos]
