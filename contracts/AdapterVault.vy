@@ -1,6 +1,4 @@
 #pragma version 0.3.10
-# ~=0.4.0rc6
-# OLD 0.3.10
 #pragma optimize codesize
 #pragma evm-version cancun
 """
