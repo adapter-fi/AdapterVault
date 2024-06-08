@@ -15,7 +15,7 @@ MAX_USAGE : constant(uint256) = 100
 MAX_PLANS : constant(uint256) = 20
 
 plans : public(DynArray[SlippagePlan, MAX_PLANS])
-last_plan_pos : public(uint256)
+#last_plan_pos : public(uint256)
 plan_pos : public(uint256)
 history : public(DynArray[SlippageExecution, MAX_USAGE])
 history_pos : public(uint256)
@@ -23,10 +23,16 @@ history_pos : public(uint256)
 @external
 def __init__():
     self.plans = empty(DynArray[SlippagePlan, MAX_PLANS])
-    self.last_plan_pos = 0
+    #self.last_plan_pos = 0
     self.plan_pos = 0
     self.history = empty(DynArray[SlippageExecution, MAX_USAGE])
     self.history_pos = 0
+
+
+@external
+@view
+def history_len() -> uint256:
+    return len(self.history)
 
 
 @external
@@ -34,22 +40,24 @@ def set_slippage(_percent: uint256, _qty: uint256 = 0):
     # _qty = 0 means keep on this one forever.
     plan : SlippagePlan = SlippagePlan({percent: _percent,
                                         qty: _qty})
-    self.plans[self.last_plan_pos] = plan
-    self.last_plan_pos += 1
+    self.plans.append(plan)
+    #self.last_plan_pos += 1
 
 
 @internal
 def _update_plan_usage(_orig_val: uint256, _final_val: uint256, _plan: SlippagePlan):
-    exec : SlippageExecution = self.history[self.history_pos]
+    exec : SlippageExecution = empty(SlippageExecution)
+    if len(self.history) > 0: 
+        exec = self.history[self.history_pos]
     exec.plan_pos = self.plan_pos
     exec.usage += 1
     exec.val_in = _orig_val
     exec.val_out = _final_val
 
-    if self.history_pos == 0:
-        self.history[self.history_pos] = exec
-    else:
-        self.history[self.history_pos+1] = exec
+    #if self.history_pos == 0:
+    #    self.history[self.history_pos] = exec
+    #else:
+    self.history.append(exec)
     self.history_pos += 1
 
     # Once a SlippagePlan has a qty of zero it stays forever.
@@ -67,8 +75,11 @@ def slippage_result(_value : uint256) -> uint256:
         return _value
     plan : SlippagePlan = self.plans[self.plan_pos]
     result : uint256 = _value
-    if plan.percent > 0:
-        result = result * plan.percent / 100
+    if plan.percent > 0 and result > 0:
+        loss : uint256 = result * plan.percent / 100
+        result -= loss
+        #breakpoint()
+        #assert False, "HERE!"
 
     self._update_plan_usage(_value, result, plan)
 

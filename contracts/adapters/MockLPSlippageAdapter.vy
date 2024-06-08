@@ -9,9 +9,25 @@ interface mintableERC20:
     def mint(_receiver: address, _amount: uint256) -> uint256: nonpayable
     def burn(_value: uint256): nonpayable
     
+struct SlippagePlan:
+    percent: uint256
+    qty: uint256 # zero means forever
+
+struct SlippageExecution:
+    plan_pos : uint256
+    usage: uint256     
+    val_in: uint256
+    val_out: uint256
+
+MAX_USAGE : constant(uint256) = 100    
+
 interface MockSlippageManager:
     def slippage_result(_value : uint256) -> uint256: nonpayable        
     def set_slippage(_percent: uint256, _qty: uint256 = 0): nonpayable
+    def history(_pos : uint256) -> SlippageExecution: view
+    def history_len() -> uint256: view
+    def plans(_pos: uint256) -> SlippagePlan: view
+
 
 implements: IAdapter
 
@@ -20,6 +36,8 @@ awrappedAsset: immutable(address)
 adapterLPAddr: immutable(address)
 
 slippage_manager: immutable(address) 
+
+
 
 
 @external
@@ -40,6 +58,21 @@ def set_slippage(_percent: uint256, _qty: uint256 = 0):
 def _slippage_result(_value : uint256) -> uint256:
     result : uint256 = MockSlippageManager(slippage_manager).slippage_result(_value)
     return result
+
+
+@external
+@view
+def slip_history_len() -> uint256:
+    return MockSlippageManager(slippage_manager).history_len()
+
+
+@external
+@view
+# Returns percent, qty, usage, val_in, val_out
+def slip_history(_pos : uint256) -> (uint256, uint256, uint256, uint256, uint256):
+    history : SlippageExecution = MockSlippageManager(slippage_manager).history(_pos)
+    plan : SlippagePlan = MockSlippageManager(slippage_manager).plans(history.plan_pos)
+    return plan.percent, plan.qty, history.usage, history.val_in, history.val_out
 
 
 @external
