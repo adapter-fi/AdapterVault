@@ -72,8 +72,8 @@ def vault(deployer, broke_erc20, funds_alloc, gov, adapter):
     with boa.env.prank(adapter.address):
         broke_erc20.approve(v.address, 10*10**18)
 
-    #strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
-    strategy = [(empty(address),0)] * MAX_ADAPTERS
+    strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
+    #strategy = [(empty(address),0)] * MAX_ADAPTERS
     strategy[0] = (adapter.address, 1)
 
     with boa.env.prank(gov.address):
