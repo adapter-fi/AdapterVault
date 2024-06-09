@@ -24,6 +24,39 @@ def setup_chain():
         yield
 
 @pytest.fixture
+def vault_blueprint(setup_chain):
+    f = boa.load_partial("contracts/AdapterVault.vy")
+    return f.deploy_as_blueprint()
+
+def access_vault(addr):
+    f = boa.load_partial("contracts/AdapterVault.vy")
+    return f.at(addr)
+
+def access_adapter(addr):
+    f = boa.load_partial("contracts/adapters/PendleAdapter.vy")
+    return f.at(addr)
+
+@pytest.fixture
+def pendle_adapter_blueprint(setup_chain):
+    f = boa.load_partial("contracts/adapters/PendleAdapter.vy")
+    return f.deploy_as_blueprint()
+
+@pytest.fixture
+def pendle_factory(setup_chain, deployer, funds_alloc, vault_blueprint, pendle_adapter_blueprint):
+    with boa.env.prank(deployer):
+        pa = boa.load("contracts/PendleVaultFactory.vy")
+        pa.update_blueprints(vault_blueprint, pendle_adapter_blueprint)
+        pa.update_funds_allocator(funds_alloc)
+        pa.update_governance(deployer)
+        pa.update_pendle_contracts(
+            PENDLE_ROUTER,
+            PENDLE_ROUTER_STATIC,
+            PENDLE_ORACLE
+        )
+    return pa
+
+
+@pytest.fixture
 def deployer(setup_chain):
     acc = boa.env.generate_address(alias="deployer")
     boa.env.set_balance(acc, 1000*10**18)
@@ -108,19 +141,6 @@ def funds_alloc(setup_chain, deployer):
         f = boa.load("contracts/FundsAllocator.vy")
     return f
 
-def _adaptervault(deployer, asset, trader, funds_alloc):
-    with boa.env.prank(deployer):
-        v = boa.load(
-            "contracts/AdapterVault.vy",
-            "ena-Pendle",
-            "pena",
-            18,
-            asset,
-            deployer,
-            funds_alloc,
-            Decimal(2.0)
-        )
-    return v
 
 
 def pendle_pt(_pendle_pt):
@@ -136,22 +156,30 @@ def pendle_SY(_sy):
         return factory.at(_sy)
 
 
-def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc, _PENDLE_ORACLE, oracle):
+def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, pendle_factory, _PENDLE_ORACLE, oracle, default_slippage=2.0):
 
     pt = pendle_pt(_pendle_pt)
     pendleMarket = pendle_Market(_pendle_market)
     pendleOracle = _pendleOracle(pendleMarket, _PENDLE_ORACLE)
-    pendle_adapter = _pendle_adapter(deployer, asset, _pendle_market)
-    adaptervault = _adaptervault(deployer, asset, trader, funds_alloc)
-    strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
-    strategy[0] = (pendle_adapter.address, 1)
-
+    with boa.env.prank(trader):
+        asset.transfer(deployer, 10**9)
     with boa.env.prank(deployer):
-        adaptervault.set_strategy(deployer, strategy, 0)
-        ret = adaptervault.add_adapter(pendle_adapter.address) 
-        assert ret == True
+        asset.approve(pendle_factory, 10**9)
+        pendle_factory.deploy_pendle_vault(
+            asset,
+            _pendle_market,
+            "something blah",
+            "psteth",
+            18,
+            Decimal(default_slippage),
+            10**9
+        )
+    vault_addr_byte = pendle_factory._computation.output[12:]
+    adaptervault = access_vault(vault_addr_byte)
+    pendle_adapter = access_adapter(adaptervault.adapters(0))
     
     with boa.env.prank(trader):
+        init_total_assets = adaptervault.totalAssets()
         asset.approve(adaptervault, 1*10**18)
         bal_pre = asset.balanceOf(trader)
         ex_rate = pendleOracle.getPtToAssetRate(_pendle_market, 1200)
@@ -170,7 +198,7 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         total_assets = adaptervault.totalAssets()
         print(total_assets)
         #since trader is the first depositor, everything in the vault belongs to trader
-        assert total_assets == trader_asset_bal, "Funds missing"
+        assert total_assets - init_total_assets == pytest.approx(trader_asset_bal), "Funds missing"
         #Ensure slippage is within limits (or else the vault would have reverted...)
         assert trader_asset_bal > deducted - (deducted * 0.02), "slipped beyond limits"
         assert adaptervault.claimable_yield_fees_available() == 0, "there should be no yield"
@@ -206,7 +234,7 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         pt_bal_pre = pt.balanceOf(adaptervault)
         asset_bal_pre = asset.balanceOf(adaptervault)
         trader_bal_pre = asset.balanceOf(trader)
-        assert adaptervault.balanceOf(trader) == adaptervault.convertToShares( adaptervault.convertToAssets(adaptervault.balanceOf(trader)))
+        assert adaptervault.balanceOf(trader) == pytest.approx(adaptervault.convertToShares( adaptervault.convertToAssets(adaptervault.balanceOf(trader))))
 
         adaptervault.withdraw(
             adaptervault.convertToAssets(adaptervault.balanceOf(trader)),
@@ -238,7 +266,7 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
 def pegged_oracle(wrapped):
     return wrapped
 
-def test_markets_ezeth(setup_chain, trader, deployer, funds_alloc):
+def test_markets_ezeth(setup_chain, trader, deployer, pendle_factory):
     #stETH on mainnet
     PENDLE_MARKET="0x5E03C94Fc5Fb2E21882000A96Df0b63d2c4312e2" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
     EZETH="0x2416092f143378750bb29b79eD961ab195CcEea5"
@@ -251,4 +279,4 @@ def test_markets_ezeth(setup_chain, trader, deployer, funds_alloc):
         rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
 
-    market_test(PENDLE_PT, ezeth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+    market_test(PENDLE_PT, ezeth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange)

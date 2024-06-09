@@ -513,6 +513,54 @@
       {
         "name": "vault",
         "type": "address"
+      },
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "name": "adapter",
+                "type": "address"
+              },
+              {
+                "name": "ratio",
+                "type": "uint256"
+              }
+            ],
+            "name": "LPRatios",
+            "type": "tuple[5]"
+          },
+          {
+            "name": "min_proposer_payout",
+            "type": "uint256"
+          },
+          {
+            "name": "APYNow",
+            "type": "uint256"
+          },
+          {
+            "name": "APYPredicted",
+            "type": "uint256"
+          }
+        ],
+        "name": "replacementStrategy",
+        "type": "tuple"
+      }
+    ],
+    "name": "rejectStrategy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "Nonce",
+        "type": "uint256"
+      },
+      {
+        "name": "vault",
+        "type": "address"
       }
     ],
     "name": "activateStrategy",
