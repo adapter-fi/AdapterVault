@@ -66,6 +66,7 @@ def slippage_result(_value : uint256) -> uint256:
     #assert _value == 1000, "Not 1000!"
     if len(self.plans) == 0:
         return _value
+    assert not self.plan_pos > len(self.plans), "Slippage txs exhausted!"     
     plan : SlippagePlan = self.plans[self.plan_pos]
     result : uint256 = _value
     if plan.percent > 0.0 and result > 0:
