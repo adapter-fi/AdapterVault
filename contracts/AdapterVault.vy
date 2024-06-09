@@ -1198,6 +1198,8 @@ def _adapter_deposit(_adapter: address, _asset_amount: uint256, _pregen_info: Dy
 
     starting_assets : uint256 = self._adapterAssets(_adapter)
 
+    #assert _asset_amount == 1000, "NOT 1000 _adapter_deposit!" # BDM
+
     response = raw_call(
         _adapter,
         _abi_encode(_asset_amount, pregen_info, method_id=method_id("deposit(uint256,bytes)")),
@@ -1275,6 +1277,8 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     # Move assets to this contract from caller in one go.
     ERC20(asset).transferFrom(msg.sender, self, _asset_amount, default_return_value=True)
 
+    # assert _asset_amount == 1000, "NOT 1000 _deposit!" # BDM
+
     # Clear the asset cache for vault but not adapters.
     self._dirtyAssetCache(True, False)
 
@@ -1317,6 +1321,7 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount deposited to receiver
     """
+    # assert _asset_amount == 1000, "NOT 1000 deposit!" # BDM
     result : uint256 = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
     self._dirtyAssetCache()
     return result

@@ -9,9 +9,25 @@ interface mintableERC20:
     def mint(_receiver: address, _amount: uint256) -> uint256: nonpayable
     def burn(_value: uint256): nonpayable
     
+struct SlippagePlan:
+    percent: decimal
+    qty: uint256 # zero means forever
+
+struct SlippageExecution:
+    plan_pos : uint256
+    usage: uint256     
+    val_in: uint256
+    val_out: uint256
+
+MAX_USAGE : constant(uint256) = 100    
+
 interface MockSlippageManager:
     def slippage_result(_value : uint256) -> uint256: nonpayable        
-    def set_slippage(_percent: uint256, _qty: uint256 = 0): nonpayable
+    def set_slippage(_percent: decimal, _qty: uint256 = 0): nonpayable
+    def history(_pos : uint256) -> SlippageExecution: view
+    def history_len() -> uint256: view
+    def plans(_pos: uint256) -> SlippagePlan: view
+
 
 implements: IAdapter
 
@@ -20,6 +36,8 @@ awrappedAsset: immutable(address)
 adapterLPAddr: immutable(address)
 
 slippage_manager: immutable(address) 
+
+
 
 
 @external
@@ -32,7 +50,7 @@ def __init__(_originalAsset: address, _wrappedAsset: address, _slippage_manager:
 
 
 @external
-def set_slippage(_percent: uint256, _qty: uint256 = 0):
+def set_slippage(_percent: decimal, _qty: uint256 = 0):
     MockSlippageManager(slippage_manager).set_slippage(_percent, _qty)
 
 
@@ -40,6 +58,21 @@ def set_slippage(_percent: uint256, _qty: uint256 = 0):
 def _slippage_result(_value : uint256) -> uint256:
     result : uint256 = MockSlippageManager(slippage_manager).slippage_result(_value)
     return result
+
+
+@external
+@view
+def slip_history_len() -> uint256:
+    return MockSlippageManager(slippage_manager).history_len()
+
+
+@external
+@view
+# Returns percent, qty, usage, val_in, val_out
+def slip_history(_pos : uint256) -> (decimal, uint256, uint256, uint256, uint256):
+    history : SlippageExecution = MockSlippageManager(slippage_manager).history(_pos)
+    plan : SlippagePlan = MockSlippageManager(slippage_manager).plans(history.plan_pos)
+    return plan.percent, plan.qty, history.usage, history.val_in, history.val_out
 
 
 @external
@@ -120,6 +153,9 @@ def deposit(asset_amount: uint256, pregen_info: Bytes[4096]=empty(Bytes[4096])):
     # Move funds into the LP.
     slippage_assets : uint256 = self._slippage_result(asset_amount)
     ERC20(aoriginalAsset).transfer(adapterLPAddr, slippage_assets, default_return_value=True)
+    if asset_amount > slippage_assets:
+        # Burn the loss
+        ERC20(aoriginalAsset).transfer(empty(address), asset_amount - slippage_assets, default_return_value=True)
 
     # Return LP wrapped assets to 4626 vault.
     # TODO : Ignore wrapped asset for now!
@@ -146,6 +182,9 @@ def withdraw(asset_amount: uint256 , withdraw_to: address, pregen_info: Bytes[40
     # Move funds into the destination accout.
     slippage_assets :uint256 = self._slippage_result(asset_amount)
     ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, slippage_assets, default_return_value=True)
+    if asset_amount > slippage_assets:
+        # Burn the loss
+        ERC20(aoriginalAsset).transfer(empty(address), asset_amount - slippage_assets, default_return_value=True)
     
     return slippage_assets
 
