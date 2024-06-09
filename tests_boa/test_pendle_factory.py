@@ -12,7 +12,7 @@ from tests_boa.conftest import forked_env_mainnet
 PENDLE_ROUTER="0x00000000005BBB0EF59571E58418F9a4357b68A0"
 NOTHING="0x0000000000000000000000000000000000000000"
 PENDLE_ROUTER_STATIC="0x263833d47eA3fA4a30f269323aba6a107f9eB14C"
-PENDLE_MARKET="0xd0354d4e7bcf345fb117cabe41acadb724eccca2" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
+PENDLE_MARKET="0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
 STETH="0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
 PENDLE_PT="0x7758896b6AC966BbABcf143eFA963030f17D3EdF"
 PENDLE_ORACLE="0x66a1096C6366b2529274dF4f5D8247827fe4CEA8"
@@ -200,14 +200,24 @@ def test_vault_factory(setup_chain, pendle_factory, deployer, steth, trader, vau
         )
         steth.approve(pendle_factory, 10**9)
         #Finally we can deploy
-        pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        vault_addr = pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
     #Fetch logs...
-    logs = pendle_factory._computation.get_log_entries()
-    assert len(logs) > 6
+    logs = pendle_factory.get_logs(include_child_logs=False)
+    assert len(logs) == 1
+    #TODO: Parse logs...
+    deployed_log = logs[0]
+    print(deployed_log)
+    print(deployed_log.args)
+    assert "PendleAdapterVaultDeployed" in str(deployed_log.event_type), "event mismatch"
+    assert deployed_log.topics[0] == vault_addr, "event mismatch"
+    assert deployed_log.topics[1] == steth.address, "event mismatch"
+    assert deployed_log.args[0] == PENDLE_MARKET, "event mismatch"
+    assert deployed_log.args[1] == vault_blueprint.address, "event mismatch"
+    assert deployed_log.args[2] == pendle_adapter_blueprint.address, "event mismatch"
+    assert deployed_log.args[3] == trader, "event mismatch"
     #Validate the adapter and vault
     print("deployment cost", pendle_factory._computation.get_gas_used())
-    vault_addr_byte = pendle_factory._computation.output[12:]
-    vault = access_vault(vault_addr_byte)
+    vault = access_vault(vault_addr)
     assert vault.name() == "steth blah", "name incorrect"
     assert vault.decimals() == 18, "decimals incorrect"
     assert vault.symbol() == "psteth", "symbol incorrect"
@@ -222,4 +232,3 @@ def test_vault_factory(setup_chain, pendle_factory, deployer, steth, trader, vau
     assert vault.total_yield_fees_claimed() == 0, "total_yield_fees_claimed incorrect"
     assert vault.total_strategy_fees_claimed() == 0, "total_strategy_fees_claimed incorrect"
     assert vault.totalSupply() == pytest.approx(10**9, 0.02), "totalSupply incorrect"
-    #TODO: Parse logs...
