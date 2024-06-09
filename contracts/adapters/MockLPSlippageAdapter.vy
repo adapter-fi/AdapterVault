@@ -10,7 +10,7 @@ interface mintableERC20:
     def burn(_value: uint256): nonpayable
     
 struct SlippagePlan:
-    percent: uint256
+    percent: decimal
     qty: uint256 # zero means forever
 
 struct SlippageExecution:
@@ -23,7 +23,7 @@ MAX_USAGE : constant(uint256) = 100
 
 interface MockSlippageManager:
     def slippage_result(_value : uint256) -> uint256: nonpayable        
-    def set_slippage(_percent: uint256, _qty: uint256 = 0): nonpayable
+    def set_slippage(_percent: decimal, _qty: uint256 = 0): nonpayable
     def history(_pos : uint256) -> SlippageExecution: view
     def history_len() -> uint256: view
     def plans(_pos: uint256) -> SlippagePlan: view
@@ -50,7 +50,7 @@ def __init__(_originalAsset: address, _wrappedAsset: address, _slippage_manager:
 
 
 @external
-def set_slippage(_percent: uint256, _qty: uint256 = 0):
+def set_slippage(_percent: decimal, _qty: uint256 = 0):
     MockSlippageManager(slippage_manager).set_slippage(_percent, _qty)
 
 
@@ -69,7 +69,7 @@ def slip_history_len() -> uint256:
 @external
 @view
 # Returns percent, qty, usage, val_in, val_out
-def slip_history(_pos : uint256) -> (uint256, uint256, uint256, uint256, uint256):
+def slip_history(_pos : uint256) -> (decimal, uint256, uint256, uint256, uint256):
     history : SlippageExecution = MockSlippageManager(slippage_manager).history(_pos)
     plan : SlippagePlan = MockSlippageManager(slippage_manager).plans(history.plan_pos)
     return plan.percent, plan.qty, history.usage, history.val_in, history.val_out

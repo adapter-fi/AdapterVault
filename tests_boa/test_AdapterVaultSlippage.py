@@ -58,7 +58,7 @@ def adapter_zero_loss(deployer, dai, erc20):
     with boa.env.prank(deployer):
         m = boa.load("contracts/adapters/MockSlippageManager.vy")
         a = boa.load("contracts/adapters/MockLPSlippageAdapter.vy", dai, erc20, m)
-        a.set_slippage(0)
+        a.set_slippage(Decimal(0.0))
     return a
 
 @pytest.fixture
@@ -66,7 +66,7 @@ def adapter_two_percent_loss(deployer, dai, erc20):
     with boa.env.prank(deployer):
         m = boa.load("contracts/adapters/MockSlippageManager.vy")
         a = boa.load("contracts/adapters/MockLPSlippageAdapter.vy", dai, erc20, m)
-        a.set_slippage(2)
+        a.set_slippage(Decimal(2.0))
     return a    
 
 @pytest.fixture
@@ -74,7 +74,7 @@ def adapter_five_percent_loss(deployer, dai, erc20):
     with boa.env.prank(deployer):
         m = boa.load("contracts/adapters/MockSlippageManager.vy")
         a = boa.load("contracts/adapters/MockLPSlippageAdapter.vy", dai, erc20, m)
-        a.set_slippage(5)
+        a.set_slippage(Decimal(5.0))
     return a     
 
 

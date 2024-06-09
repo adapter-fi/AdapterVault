@@ -2,7 +2,7 @@
 #pragma evm-version cancun
 
 struct SlippagePlan:
-    percent: uint256
+    percent: decimal
     qty: uint256 # zero means forever
 
 struct SlippageExecution:
@@ -32,7 +32,7 @@ def history_len() -> uint256:
 
 
 @external
-def set_slippage(_percent: uint256, _qty: uint256 = 0):
+def set_slippage(_percent: decimal, _qty: uint256 = 0):
     # _qty = 0 means keep on this one forever.
     plan : SlippagePlan = SlippagePlan({percent: _percent,
                                         qty: _qty})
@@ -68,9 +68,9 @@ def slippage_result(_value : uint256) -> uint256:
         return _value
     plan : SlippagePlan = self.plans[self.plan_pos]
     result : uint256 = _value
-    if plan.percent > 0 and result > 0:
-        loss : uint256 = result * plan.percent / 100
-        result -= loss
+    if plan.percent > 0.0 and result > 0:
+        loss : decimal = convert(result,decimal) * plan.percent / 100.0
+        result -= convert(loss, uint256)
         #breakpoint()
         #assert False, "HERE!"
 
