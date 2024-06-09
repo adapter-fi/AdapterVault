@@ -361,10 +361,6 @@
         "type": "address"
       },
       {
-        "name": "_adapters",
-        "type": "address[]"
-      },
-      {
         "name": "_governance",
         "type": "address"
       },
@@ -736,7 +732,7 @@
   },
   {
     "inputs": [],
-    "name": "try_total_assets",
+    "name": "totalAssetsCached",
     "outputs": [
       {
         "name": "",
@@ -1338,424 +1334,17 @@
   {
     "inputs": [
       {
-        "name": "_d4626_asset_target",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_assets",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_ratios",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "name": "adapter",
-            "type": "address"
-          },
-          {
-            "name": "current",
-            "type": "uint256"
-          },
-          {
-            "name": "last_value",
-            "type": "uint256"
-          },
-          {
-            "name": "max_deposit",
-            "type": "int256"
-          },
-          {
-            "name": "max_withdraw",
-            "type": "int256"
-          },
-          {
-            "name": "ratio",
-            "type": "uint256"
-          },
-          {
-            "name": "target",
-            "type": "uint256"
-          },
-          {
-            "name": "delta",
-            "type": "int256"
-          }
-        ],
-        "name": "_adapter_balances",
-        "type": "tuple[5]"
-      },
-      {
-        "name": "_min_outgoing_tx",
-        "type": "uint256"
-      }
-    ],
-    "name": "getTargetBalances",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "name": "",
-        "type": "int256"
-      },
-      {
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "name": "adapter",
-            "type": "address"
-          },
-          {
-            "name": "current",
-            "type": "uint256"
-          },
-          {
-            "name": "last_value",
-            "type": "uint256"
-          },
-          {
-            "name": "max_deposit",
-            "type": "int256"
-          },
-          {
-            "name": "max_withdraw",
-            "type": "int256"
-          },
-          {
-            "name": "ratio",
-            "type": "uint256"
-          },
-          {
-            "name": "target",
-            "type": "uint256"
-          },
-          {
-            "name": "delta",
-            "type": "int256"
-          }
-        ],
-        "name": "",
-        "type": "tuple[5]"
-      },
-      {
-        "name": "",
-        "type": "address[5]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_d4626_asset_target",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_assets",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_ratios",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "name": "adapter",
-            "type": "address"
-          },
-          {
-            "name": "current",
-            "type": "uint256"
-          },
-          {
-            "name": "last_value",
-            "type": "uint256"
-          },
-          {
-            "name": "max_deposit",
-            "type": "int256"
-          },
-          {
-            "name": "max_withdraw",
-            "type": "int256"
-          },
-          {
-            "name": "ratio",
-            "type": "uint256"
-          },
-          {
-            "name": "target",
-            "type": "uint256"
-          },
-          {
-            "name": "delta",
-            "type": "int256"
-          }
-        ],
-        "name": "_adapter_balances",
-        "type": "tuple[5]"
-      },
-      {
-        "name": "_min_outgoing_tx",
-        "type": "uint256"
-      },
-      {
-        "name": "_withdraw_only",
-        "type": "bool"
-      }
-    ],
-    "name": "getTargetBalances",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "name": "",
-        "type": "int256"
-      },
-      {
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "name": "adapter",
-            "type": "address"
-          },
-          {
-            "name": "current",
-            "type": "uint256"
-          },
-          {
-            "name": "last_value",
-            "type": "uint256"
-          },
-          {
-            "name": "max_deposit",
-            "type": "int256"
-          },
-          {
-            "name": "max_withdraw",
-            "type": "int256"
-          },
-          {
-            "name": "ratio",
-            "type": "uint256"
-          },
-          {
-            "name": "target",
-            "type": "uint256"
-          },
-          {
-            "name": "delta",
-            "type": "int256"
-          }
-        ],
-        "name": "",
-        "type": "tuple[5]"
-      },
-      {
-        "name": "",
-        "type": "address[5]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_target_asset_balance",
-        "type": "uint256"
-      },
-      {
-        "name": "_max_txs",
-        "type": "uint8"
-      },
-      {
-        "name": "_min_proposer_payout",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_assets",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_ratios",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "name": "adapter",
-            "type": "address"
-          },
-          {
-            "name": "current",
-            "type": "uint256"
-          },
-          {
-            "name": "last_value",
-            "type": "uint256"
-          },
-          {
-            "name": "max_deposit",
-            "type": "int256"
-          },
-          {
-            "name": "max_withdraw",
-            "type": "int256"
-          },
-          {
-            "name": "ratio",
-            "type": "uint256"
-          },
-          {
-            "name": "target",
-            "type": "uint256"
-          },
-          {
-            "name": "delta",
-            "type": "int256"
-          }
-        ],
-        "name": "_adapter_states",
-        "type": "tuple[5]"
-      }
-    ],
-    "name": "getBalanceTxs",
-    "outputs": [
-      {
-        "components": [
-          {
-            "name": "qty",
-            "type": "int256"
-          },
-          {
-            "name": "adapter",
-            "type": "address"
-          }
-        ],
-        "name": "",
-        "type": "tuple[5]"
-      },
-      {
-        "name": "",
-        "type": "address[5]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_target_asset_balance",
-        "type": "uint256"
-      },
-      {
-        "name": "_max_txs",
-        "type": "uint8"
-      },
-      {
-        "name": "_min_proposer_payout",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_assets",
-        "type": "uint256"
-      },
-      {
-        "name": "_total_ratios",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "name": "adapter",
-            "type": "address"
-          },
-          {
-            "name": "current",
-            "type": "uint256"
-          },
-          {
-            "name": "last_value",
-            "type": "uint256"
-          },
-          {
-            "name": "max_deposit",
-            "type": "int256"
-          },
-          {
-            "name": "max_withdraw",
-            "type": "int256"
-          },
-          {
-            "name": "ratio",
-            "type": "uint256"
-          },
-          {
-            "name": "target",
-            "type": "uint256"
-          },
-          {
-            "name": "delta",
-            "type": "int256"
-          }
-        ],
-        "name": "_adapter_states",
-        "type": "tuple[5]"
-      },
-      {
-        "name": "_withdraw_only",
-        "type": "bool"
-      }
-    ],
-    "name": "getBalanceTxs",
-    "outputs": [
-      {
-        "components": [
-          {
-            "name": "qty",
-            "type": "int256"
-          },
-          {
-            "name": "adapter",
-            "type": "address"
-          }
-        ],
-        "name": "",
-        "type": "tuple[5]"
-      },
-      {
-        "name": "",
-        "type": "address[5]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "name": "_target_asset_balance",
         "type": "uint256"
       }
     ],
     "name": "balanceAdapters",
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -1766,12 +1355,17 @@
         "type": "uint256"
       },
       {
-        "name": "_withdraw_only",
-        "type": "bool"
+        "name": "_min_tasset_balance",
+        "type": "uint256"
       }
     ],
     "name": "balanceAdapters",
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -1782,16 +1376,21 @@
         "type": "uint256"
       },
       {
-        "name": "_withdraw_only",
-        "type": "bool"
+        "name": "_min_tasset_balance",
+        "type": "uint256"
       },
       {
-        "name": "_max_txs",
-        "type": "uint8"
+        "name": "_withdraw_only",
+        "type": "bool"
       }
     ],
     "name": "balanceAdapters",
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -1802,12 +1401,12 @@
         "type": "uint256"
       },
       {
-        "name": "_withdraw_only",
-        "type": "bool"
+        "name": "_min_tasset_balance",
+        "type": "uint256"
       },
       {
-        "name": "_max_txs",
-        "type": "uint8"
+        "name": "_withdraw_only",
+        "type": "bool"
       },
       {
         "name": "pregen_info",
@@ -1815,7 +1414,12 @@
       }
     ],
     "name": "balanceAdapters",
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },

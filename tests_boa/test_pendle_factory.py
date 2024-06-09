@@ -205,6 +205,7 @@ def test_vault_factory(setup_chain, pendle_factory, deployer, steth, trader, vau
     logs = pendle_factory._computation.get_log_entries()
     assert len(logs) > 6
     #Validate the adapter and vault
+    print("deployment cost", pendle_factory._computation.get_gas_used())
     vault_addr_byte = pendle_factory._computation.output[12:]
     vault = access_vault(vault_addr_byte)
     assert vault.name() == "steth blah", "name incorrect"

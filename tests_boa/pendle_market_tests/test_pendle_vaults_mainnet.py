@@ -24,6 +24,39 @@ def setup_chain():
         yield
 
 @pytest.fixture
+def vault_blueprint(setup_chain):
+    f = boa.load_partial("contracts/AdapterVault.vy")
+    return f.deploy_as_blueprint()
+
+def access_vault(addr):
+    f = boa.load_partial("contracts/AdapterVault.vy")
+    return f.at(addr)
+
+def access_adapter(addr):
+    f = boa.load_partial("contracts/adapters/PendleAdapter.vy")
+    return f.at(addr)
+
+@pytest.fixture
+def pendle_adapter_blueprint(setup_chain):
+    f = boa.load_partial("contracts/adapters/PendleAdapter.vy")
+    return f.deploy_as_blueprint()
+
+@pytest.fixture
+def pendle_factory(setup_chain, deployer, funds_alloc, vault_blueprint, pendle_adapter_blueprint):
+    with boa.env.prank(deployer):
+        pa = boa.load("contracts/PendleVaultFactory.vy")
+        pa.update_blueprints(vault_blueprint, pendle_adapter_blueprint)
+        pa.update_funds_allocator(funds_alloc)
+        pa.update_governance(deployer)
+        pa.update_pendle_contracts(
+            PENDLE_ROUTER,
+            PENDLE_ROUTER_STATIC,
+            PENDLE_ORACLE
+        )
+    return pa
+
+
+@pytest.fixture
 def deployer(setup_chain):
     acc = boa.env.generate_address(alias="deployer")
     boa.env.set_balance(acc, 1000*10**18)
@@ -108,20 +141,6 @@ def funds_alloc(setup_chain, deployer):
         f = boa.load("contracts/FundsAllocator.vy")
     return f
 
-def _adaptervault(deployer, asset, trader, funds_alloc, default_slippage):
-    with boa.env.prank(deployer):
-        v = boa.load(
-            "contracts/AdapterVault.vy",
-            "ena-Pendle",
-            "pena",
-            18,
-            asset,
-            deployer,
-            funds_alloc,
-            Decimal(default_slippage)
-        )
-    return v
-
 
 def pendle_pt(_pendle_pt):
     with open("contracts/vendor/IERC20.json") as f:
@@ -136,22 +155,31 @@ def pendle_SY(_sy):
         return factory.at(_sy)
 
 
-def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc, _PENDLE_ORACLE, oracle, default_slippage=2.0):
+def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, pendle_factory, _PENDLE_ORACLE, oracle, default_slippage=2.0):
 
     pt = pendle_pt(_pendle_pt)
     pendleMarket = pendle_Market(_pendle_market)
     pendleOracle = _pendleOracle(pendleMarket, _PENDLE_ORACLE)
-    pendle_adapter = _pendle_adapter(deployer, asset, _pendle_market)
-    adaptervault = _adaptervault(deployer, asset, trader, funds_alloc, default_slippage)
-    strategy = [(ZERO_ADDRESS,0)] * MAX_ADAPTERS 
-    strategy[0] = (pendle_adapter.address, 1)
-
+    # pendle_adapter = _pendle_adapter(deployer, asset, _pendle_market)
+    with boa.env.prank(trader):
+        asset.transfer(deployer, 10**9)
     with boa.env.prank(deployer):
-        adaptervault.set_strategy(deployer, strategy, 0)
-        ret = adaptervault.add_adapter(pendle_adapter.address) 
-        assert ret == True
+        asset.approve(pendle_factory, 10**9)
+        pendle_factory.deploy_pendle_vault(
+            asset,
+            _pendle_market,
+            "something blah",
+            "psteth",
+            18,
+            Decimal(default_slippage),
+            10**9
+        )
+    vault_addr_byte = pendle_factory._computation.output[12:]
+    adaptervault = access_vault(vault_addr_byte)
+    pendle_adapter = access_adapter(adaptervault.adapters(0))
     
     with boa.env.prank(trader):
+        init_total_assets = adaptervault.totalAssets()
         asset.approve(adaptervault, 1*10**18)
         bal_pre = asset.balanceOf(trader)
         ex_rate = pendleOracle.getPtToAssetRate(_pendle_market, 1200)
@@ -170,7 +198,7 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         total_assets = adaptervault.totalAssets()
         print(total_assets)
         #since trader is the first depositor, everything in the vault belongs to trader
-        assert total_assets == trader_asset_bal, "Funds missing"
+        assert total_assets - init_total_assets == pytest.approx(trader_asset_bal), "Funds missing"
         #Ensure slippage is within limits (or else the vault would have reverted...)
         assert trader_asset_bal > deducted - (deducted * 0.02), "slipped beyond limits"
         assert adaptervault.claimable_yield_fees_available() == 0, "there should be no yield"
@@ -206,7 +234,7 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
         pt_bal_pre = pt.balanceOf(adaptervault)
         asset_bal_pre = asset.balanceOf(adaptervault)
         trader_bal_pre = asset.balanceOf(trader)
-        assert adaptervault.balanceOf(trader) == adaptervault.convertToShares( adaptervault.convertToAssets(adaptervault.balanceOf(trader)))
+        assert adaptervault.balanceOf(trader) == pytest.approx(adaptervault.convertToShares( adaptervault.convertToAssets(adaptervault.balanceOf(trader))))
 
         adaptervault.withdraw(
             adaptervault.convertToAssets(adaptervault.balanceOf(trader)),
@@ -238,24 +266,24 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, funds_alloc
 def pegged_oracle(wrapped):
     return wrapped
 
-def test_markets_ena(setup_chain, trader, deployer, funds_alloc):
+def test_markets_ena(setup_chain, trader, deployer, pendle_factory):
     #ENA on mainnet
     PENDLE_MARKET="0x9C73879F795CefA1D5239dE08d1B6Aba2D2d1434"
     ENA="0x57e114B691Db790C35207b2e685D4A43181e6061"
     PENDLE_PT="0x9946C55a34CD105f1e0CF815025EAEcff7356487"
     ena = _generic_erc20(trader, ENA, 2)
-    market_test(PENDLE_PT, ena, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, pegged_oracle)
+    market_test(PENDLE_PT, ena, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, pegged_oracle)
 
-def test_markets_steth(setup_chain, trader, deployer, funds_alloc):
+def test_markets_steth(setup_chain, trader, deployer, pendle_factory):
     #stETH on mainnet
     PENDLE_MARKET="0xd0354d4e7bcf345fb117cabe41acadb724eccca2" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
     STETH="0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
     PENDLE_PT="0x7758896b6AC966BbABcf143eFA963030f17D3EdF"
     steth = _generic_erc20(trader, STETH, 0)
-    market_test(PENDLE_PT, steth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, pegged_oracle)
+    market_test(PENDLE_PT, steth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, pegged_oracle)
 
 
-def test_markets_rseth(setup_chain, trader, deployer, funds_alloc):
+def test_markets_rseth(setup_chain, trader, deployer, pendle_factory):
     #rsETH on mainnet
     PENDLE_MARKET="0x4f43c77872Db6BA177c270986CD30c3381AF37Ee"
     RSETH="0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7"
@@ -266,9 +294,9 @@ def test_markets_rseth(setup_chain, trader, deployer, funds_alloc):
         rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
     rseth = _generic_erc20(trader, RSETH, 51)
-    market_test(PENDLE_PT, rseth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+    market_test(PENDLE_PT, rseth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange)
 
-def test_markets_rsweth(setup_chain, trader, deployer, funds_alloc):
+def test_markets_rsweth(setup_chain, trader, deployer, pendle_factory):
     #stETH on mainnet
     PENDLE_MARKET="0xA9355a5d306c67027C54De0e5a72df76Befa5694" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
     RSWETH="0xFAe103DC9cf190eD75350761e95403b7b8aFa6c0"
@@ -280,9 +308,9 @@ def test_markets_rsweth(setup_chain, trader, deployer, funds_alloc):
     def exchange(wrapped):
         rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
-    market_test(PENDLE_PT, rsweth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+    market_test(PENDLE_PT, rsweth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange)
 
-def test_markets_eeth(setup_chain, trader, deployer, funds_alloc):
+def test_markets_eeth(setup_chain, trader, deployer, pendle_factory):
     #stETH on mainnet
     PENDLE_MARKET="0xF32e58F92e60f4b0A37A69b95d642A471365EAe8" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
     EETH="0x35fA164735182de50811E8e2E824cFb9B6118ac2"
@@ -290,9 +318,9 @@ def test_markets_eeth(setup_chain, trader, deployer, funds_alloc):
     # print(probe_token_slot(trader, EETH))
     # return
     eeth = _generic_erc20(trader, EETH, 203)
-    market_test(PENDLE_PT, eeth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, pegged_oracle)
+    market_test(PENDLE_PT, eeth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, pegged_oracle)
 
-def test_markets_ezeth(setup_chain, trader, deployer, funds_alloc):
+def test_markets_ezeth(setup_chain, trader, deployer, pendle_factory):
     #stETH on mainnet
     PENDLE_MARKET="0xD8F12bCDE578c653014F27379a6114F67F0e445f" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
     EZETH="0xbf5495Efe5DB9ce00f80364C8B423567e58d2110"
@@ -305,9 +333,9 @@ def test_markets_ezeth(setup_chain, trader, deployer, funds_alloc):
         rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
 
-    market_test(PENDLE_PT, ezeth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange)
+    market_test(PENDLE_PT, ezeth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange)
 
-def test_markets_sweth(setup_chain, trader, deployer, funds_alloc):
+def test_markets_sweth(setup_chain, trader, deployer, pendle_factory):
     #stETH on mainnet
     PENDLE_MARKET="0xa5fD0E8991bE631917D2d2B2d5dACfD7bFef7876" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
     SWETH="0xf951E335afb289353dc249e82926178EaC7DEd78"
@@ -320,4 +348,4 @@ def test_markets_sweth(setup_chain, trader, deployer, funds_alloc):
         rate = orc.exchangeRate()
         return (wrapped * rate) // 10**18
 
-    market_test(PENDLE_PT, sweth, trader, deployer, PENDLE_MARKET, funds_alloc, PENDLE_ORACLE, exchange, default_slippage=6.0)
+    market_test(PENDLE_PT, sweth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange, default_slippage=6.0)
