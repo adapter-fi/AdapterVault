@@ -106,7 +106,7 @@ def deploy_pendle_vault(
     _decimals: uint8,
     _max_slippage_percent: decimal,
     _init_mint_amount: uint256
-    ):
+    ) -> address:
     """
     @notice deploy a new AdapterVault with single adapter pointing to the mentioned pendle market
     @param _asset the vault will be denominated in.
@@ -156,7 +156,7 @@ def deploy_pendle_vault(
     strategy: AdapterStrategy[MAX_ADAPTERS] = empty(AdapterStrategy[MAX_ADAPTERS]) 
     strategy[0].adapter = adapter
     strategy[0].ratio = 1
-    AdapterVault(vault).set_strategy(msg.sender, strategy, 10000)
+    AdapterVault(vault).set_strategy(msg.sender, strategy, 0)
     #mint some shares (take asset from owner)
     ERC20(_asset).transferFrom(msg.sender, self, _init_mint_amount)
     ERC20(_asset).approve(vault, _init_mint_amount)
@@ -177,3 +177,4 @@ def deploy_pendle_vault(
         self.pendle_adapter_blueprint,
         self.owner
     )
+    return vault

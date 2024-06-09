@@ -119,6 +119,11 @@ def vault_blueprint(setup_chain):
     f = boa.load_partial("contracts/AdapterVault.vy")
     return f.deploy_as_blueprint()
 
+def access_vault(addr):
+    f = boa.load_partial("contracts/AdapterVault.vy")
+    return f.at(addr)
+
+
 @pytest.fixture
 def pendle_adapter_blueprint(setup_chain):
     f = boa.load_partial("contracts/adapters/PendleAdapter.vy")
@@ -196,5 +201,24 @@ def test_vault_factory(setup_chain, pendle_factory, deployer, steth, trader, vau
         steth.approve(pendle_factory, 10**9)
         #Finally we can deploy
         pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
-        #TODO: Fetch logs... 
-        #TODO: Validate the adapter and vault
+    #Fetch logs...
+    logs = pendle_factory._computation.get_log_entries()
+    assert len(logs) > 6
+    #Validate the adapter and vault
+    vault_addr_byte = pendle_factory._computation.output[12:]
+    vault = access_vault(vault_addr_byte)
+    assert vault.name() == "steth blah", "name incorrect"
+    assert vault.decimals() == 18, "decimals incorrect"
+    assert vault.symbol() == "psteth", "symbol incorrect"
+    assert vault.governance() == governance, "governance incorrect"
+    assert vault.owner() == trader, "owner incorrect"
+    assert vault.eval("MAX_SLIPPAGE_PERCENT")  == Decimal(2.0), "MAX_SLIPPAGE_PERCENT incorrect"
+    assert vault.asset() == STETH, "asset incorrect"
+    assert vault.funds_allocator() == funds_alloc.address, "funds_allocator incorrect"
+    assert vault.current_proposer() == trader, "current_proposer incorrect"
+    assert vault.total_assets_deposited() == pytest.approx(10**9, 0.02), "total_assets_deposited incorrect"
+    assert vault.total_assets_withdrawn() == 0, "total_assets_withdrawn incorrect"
+    assert vault.total_yield_fees_claimed() == 0, "total_yield_fees_claimed incorrect"
+    assert vault.total_strategy_fees_claimed() == 0, "total_strategy_fees_claimed incorrect"
+    assert vault.totalSupply() == pytest.approx(10**9, 0.02), "totalSupply incorrect"
+    #TODO: Parse logs...
