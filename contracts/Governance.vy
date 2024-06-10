@@ -125,7 +125,7 @@ def __init__(contractOwner: address, _tdelay: uint256):
     self.contractOwner = contractOwner
     self.TDelay = _tdelay
     if _tdelay == empty(uint256):
-        self.TDelay = 259200 # 30 days vs 21600 (6 hours)
+        self.TDelay = 2592000 # 30 days vs 21600 (6 hours)
 
 
 @internal
