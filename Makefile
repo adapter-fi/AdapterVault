@@ -40,4 +40,5 @@ abi-export:
 	jq .abi .build/AdapterVault.json  > ./abis/AdapterVault.abi.json
 	jq .abi .build/Governance.json  > ./abis/Governance.abi.json
 	jq .abi .build/PendleVaultFactory.json  > ./abis/PendleVaultFactory.abi.json
+	jq .abi .build/PTMigrationRouter.json  > ./abis/PTMigrationRouter.abi.json
 
