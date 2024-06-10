@@ -98,6 +98,14 @@ interface PendleMarket:
 interface AdapterVault:
     def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 0, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256: nonpayable
 
+event PTMigrated:
+    user: indexed(address)
+    asset: indexed(address)
+    vault: indexed(address)
+    vault_shares: uint256
+    market: address
+    pt_amount: uint256
+
 pendleRouter: immutable(address)
 MAX_ADAPTERS : constant(uint256) = 5
 
@@ -155,6 +163,21 @@ def migrate(
 
     netTokenOut, netSyFee, netSyInterm = PendleRouter(pendleRouter).swapExactPtForToken(self, market, exactPtIn, out, limit)
 
+    #Cant rely on netTokenOut because of rounding issues in tokens like stETH
+    actual_out: uint256 = ERC20(asset).balanceOf(self)
+    assert actual_out >= minTokenOut, "Balance is lower than minTokenOut"
     #Now do deposit netTokenOut into vault...
-    ERC20(asset).approve(vault, netTokenOut)
-    return AdapterVault(vault).deposit(netTokenOut, msg.sender, min_shares, pregen_info)
+    ERC20(asset).approve(vault, actual_out)
+    shares_got: uint256 = AdapterVault(vault).deposit(actual_out, msg.sender, min_shares, pregen_info)
+
+    log PTMigrated(
+        msg.sender,
+        asset,
+        vault,
+        shares_got,
+        market,
+        exactPtIn
+    )
+
+
+    return shares_got

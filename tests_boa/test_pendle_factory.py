@@ -123,6 +123,9 @@ def access_vault(addr):
     f = boa.load_partial("contracts/AdapterVault.vy")
     return f.at(addr)
 
+def access_adapter(addr):
+    f = boa.load_partial("contracts/adapters/PendleAdapter.vy")
+    return f.at(addr)
 
 @pytest.fixture
 def pendle_adapter_blueprint(setup_chain):
@@ -135,6 +138,13 @@ def pendle_factory(setup_chain, deployer, steth, pendleOracle):
     with boa.env.prank(deployer):
         pa = boa.load("contracts/PendleVaultFactory.vy")
     return pa
+
+@pytest.fixture
+def pendle_migrator(setup_chain, deployer):
+    with boa.env.prank(deployer):
+        pa = boa.load("contracts/PTMigrationRouter.vy", PENDLE_ROUTER)
+    return pa
+
 
 @pytest.fixture
 def funds_alloc(setup_chain, deployer):
@@ -204,7 +214,7 @@ def test_vault_factory(setup_chain, pendle_factory, deployer, steth, trader, vau
     #Fetch logs...
     logs = pendle_factory.get_logs(include_child_logs=False)
     assert len(logs) == 1
-    #TODO: Parse logs...
+    #Parse logs...
     deployed_log = logs[0]
     print(deployed_log)
     print(deployed_log.args)
@@ -232,3 +242,81 @@ def test_vault_factory(setup_chain, pendle_factory, deployer, steth, trader, vau
     assert vault.total_yield_fees_claimed() == 0, "total_yield_fees_claimed incorrect"
     assert vault.total_strategy_fees_claimed() == 0, "total_strategy_fees_claimed incorrect"
     assert vault.totalSupply() == pytest.approx(10**9, 0.02), "totalSupply incorrect"
+
+
+def test_pt_migration(setup_chain, pendle_factory, deployer, steth, trader, vault_blueprint, pendle_adapter_blueprint, funds_alloc, governance, pendleRouter, pendle_migrator, pt):
+    with boa.env.prank(trader):
+        steth.transfer(deployer, 10**9)
+    with boa.env.prank(deployer):
+        pendle_factory.update_blueprints(vault_blueprint, pendle_adapter_blueprint)
+        pendle_factory.update_funds_allocator(funds_alloc)
+        pendle_factory.update_governance(governance)
+        pendle_factory.update_pendle_contracts(
+            PENDLE_ROUTER,
+            PENDLE_ROUTER_STATIC,
+            PENDLE_ORACLE
+        )
+        steth.approve(pendle_factory, 10**9)
+        vault_addr = pendle_factory.deploy_pendle_vault(STETH, PENDLE_MARKET, "steth blah", "psteth", 18, Decimal(2.0), 10**9)
+        vault = access_vault(vault_addr)
+        pendle_adapter = access_adapter(vault.adapters(0))
+    with boa.env.prank(trader):
+        #Trader acquires PT directly
+        steth.approve(pendleRouter, 10*10**18)
+        ap = (
+            0, #guessMin
+            MAX_UINT256, #guessMax
+            0, #guessOffchain
+            256, #maxIteration
+            10**14 #eps
+        )
+        ti = (
+            STETH, #tokenIn
+            10*10**18, #netTokenIn
+            STETH, #tokenMintSy
+            "0x0000000000000000000000000000000000000000", #pendleSwap
+            (
+                0,
+                "0x0000000000000000000000000000000000000000",
+                b"",
+                False
+            ) #swapData
+        )
+        limit = (
+            "0x0000000000000000000000000000000000000000", #limitRouter
+            0, #epsSkipMarket
+            [], #normalFills
+            [], #flashFills
+            b"" #optData
+        )
+
+        pendleRouter.swapExactTokenForPt(trader, PENDLE_MARKET, 0, ap, ti, limit)
+        pt_bal = pt.balanceOf(trader)
+        pt_bal_vault = pt.balanceOf(vault)
+        print("pt_bal", pt_bal)
+        #we cant use REST API in a fork... so lets just allow for unlimited loss in intermediate step
+        minTokenOut = 0
+        #Get pregen info from adapter
+        pregen = pendle_adapter.generate_pregen_info(10* 10**18)
+        #Do migration
+        pt.approve(pendle_migrator, pt_bal)
+        shares_got = pendle_migrator.migrate(PENDLE_MARKET, pt_bal, steth, minTokenOut, limit, vault, 0, [pregen])
+        #Fetch logs...
+        logs = pendle_migrator.get_logs(include_child_logs=False)
+        assert len(logs) == 1
+        #Parse logs...
+        deployed_log = logs[0]
+        print(deployed_log)
+        print(deployed_log.args)
+        assert "PTMigrated" in str(deployed_log.event_type), "event mismatch"
+        assert deployed_log.topics[0] == trader, "event mismatch"
+        assert deployed_log.topics[1] == STETH, "event mismatch"
+        assert deployed_log.topics[2] == vault.address, "event mismatch"
+        assert deployed_log.args[0] == shares_got, "event mismatch"
+        assert deployed_log.args[1] == PENDLE_MARKET, "event mismatch"
+        assert deployed_log.args[2] == pt_bal, "event mismatch"
+
+        print("gas_used: ", pendle_migrator._computation.get_gas_used())
+        print("trader PT lost: ", pt_bal - pt.balanceOf(trader) )
+        print("Vault PT gained: ", pt.balanceOf(vault) - pt_bal_vault )
+        print("trader vault asset gained: ", vault.convertToAssets( vault.balanceOf(trader)) )
