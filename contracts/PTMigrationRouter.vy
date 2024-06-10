@@ -122,12 +122,12 @@ def migrate(
 ) -> uint256 :
     """
     @notice This function provides a way to "migrate" users existing PT into AdapterVault of same asset
-    @param market: The pendle market to which the PT being deposited belongs to
-    @param asset: The asset this PT wraps = same as asset the vault uses
-    @param minTokenOut: Minimum amount of intermediate step assets
-    @param limit: This could be populated from pendle's REST API for optimum trade fees.
-    @param vault: The address of the AdapterVault we are depositing into
-    @param _min_shares Minmum number of shares that is acceptable. If 0 then apply MAX_SLIPPAGE_PERCENT % allowable slippage.
+    @param market The pendle market to which the PT being deposited belongs to
+    @param asset The asset this PT wraps = same as asset the vault uses
+    @param minTokenOut Minimum amount of intermediate step assets
+    @param limit This could be populated from pendle's REST API for optimum trade fees.
+    @param vault The address of the AdapterVault we are depositing into
+    @param min_shares Minmum number of shares that is acceptable. If 0 then apply MAX_SLIPPAGE_PERCENT % allowable slippage.
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount deposited to receiver
     @dev
