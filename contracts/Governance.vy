@@ -59,8 +59,6 @@ struct AdapterStrategy:
 struct ProposedStrategy:
     LPRatios: AdapterStrategy[MAX_ADAPTERS]
     min_proposer_payout: uint256
-    APYNow: uint256
-    APYPredicted: uint256    
 
 event StrategyProposal:
     strategy : Strategy
@@ -81,8 +79,6 @@ struct Strategy:
     ProposerAddress: address
     LPRatios: AdapterStrategy[MAX_ADAPTERS]
     min_proposer_payout: uint256
-    APYNow: uint256
-    APYPredicted: uint256
     TSubmitted: uint256
     TActivated: uint256
     Withdrawn: bool
@@ -166,9 +162,6 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     # Confirm msg.sender Eligibility
     # Confirm msg.sender is not blacklisted
 
-    # Confirm strategy meets financial goal improvements.
-    assert strategy.APYPredicted - strategy.APYNow > 0, "Cannot Submit Strategy without APY Increase"
-
     strat : Strategy = empty(Strategy)
 
     strat.Nonce = self.NextNonceByVault[vault]
@@ -177,8 +170,6 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     strat.ProposerAddress = msg.sender
     strat.LPRatios = strategy.LPRatios
     strat.min_proposer_payout = strategy.min_proposer_payout
-    strat.APYNow = strategy.APYNow
-    strat.APYPredicted = strategy.APYPredicted
     strat.TSubmitted = block.timestamp
     strat.TActivated = 0    
     strat.Withdrawn = False
@@ -305,7 +296,7 @@ def rejectStrategy(Nonce: uint256, vault: address, replacementStrategy : Propose
     strategy_ultimately_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
 
     # If there is a replacement strategy suggested and this is the vote that ultimately decides the thing...
-    if replacementStrategy.APYNow != 0: # Can't test against emtpty(ProposedStrategy) due to Vyper issue #2638.
+    if replacementStrategy.LPRatios[0].adapter != empty(address): # Can't test against empty(ProposedStrategy) due to Vyper issue #2638.
         if (not strategy_already_rejected) and strategy_ultimately_rejected:    
             # Replace the current pending but rejected strategy with this new one.
             self._submitStrategy(replacementStrategy, vault)

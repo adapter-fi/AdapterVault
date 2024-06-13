@@ -11,8 +11,6 @@ struct Strategy:
     Nonce: uint256
     ProposerAddress: address
     Weights: DynArray[uint256, MAX_ADAPTERS]
-    APYNow: uint256
-    APYPredicted: uint256
     TSubmitted: uint256
     TActivated: uint256
     Withdrawn: bool
