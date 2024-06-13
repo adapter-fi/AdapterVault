@@ -35,6 +35,7 @@ event GovernanceContractChanged:
 
 event VoteForNewGovernance:
     NewGovernance: indexed(address)
+    Voter: indexed(address)
 
 event NewVault:
     vault: indexed(address)
@@ -488,7 +489,7 @@ def replaceGovernance(NewGovernance: address, vault: address):
 
     #Check if sender has voted, if not log new vote
     if self.VotesGCByVault[vault][msg.sender] != NewGovernance: 
-        log VoteForNewGovernance(NewGovernance)
+        log VoteForNewGovernance(NewGovernance, msg.sender)
 
     #Record Vote
     self.VotesGCByVault[vault][msg.sender] = NewGovernance
