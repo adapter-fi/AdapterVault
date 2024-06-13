@@ -506,7 +506,7 @@ def replaceGovernance(NewGovernance: address, vault: address):
             self.VotesGCByVault[vault][guard_addr] = empty(address)
 
 
-    log GovernanceContractChanged(Voter, NewGovernance, VoteCount, TotalGuards)
+        log GovernanceContractChanged(Voter, NewGovernance, VoteCount, TotalGuards)
 
 
 @external
