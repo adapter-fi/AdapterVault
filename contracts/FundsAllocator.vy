@@ -64,7 +64,7 @@ def _getTargetBalancesWithdrawOnly(_vault_balance: uint256, _d4626_asset_target:
         # If the adapter has been removed from the strategy then we must empty it!
         if adapter.ratio == 0 and adapter.current > 0:
             adapter.target = 0
-            adapter.delta = max(convert(adapter.current, int256)*-1, adapter.max_withdraw) # Withdraw it all!
+            adapter.delta = min(convert(adapter.current, int256)*-1, adapter.max_withdraw) # Withdraw it all!
             target_withdraw_balance -= min(convert(adapter.delta * -1, uint256),target_withdraw_balance)
 
         elif adapter.current > 0:
