@@ -308,7 +308,7 @@ def test_endorseStrategy(governance_contract, vault_contract_one, accounts, proj
     assert len(logs) == 1
     assert logs[0].Nonce == NONCE
     assert logs[0].GuardAddress == someone
-    assert logs[0].Endorse == False
+    assert logs[0].Endorse == True
 
     #Test to see if i can vote again
     with ape.reverts():
@@ -365,7 +365,7 @@ def test_rejectStrategy(governance_contract, vault_contract_one, accounts, proje
     assert len(logs) == 1
     assert logs[0].Nonce == NONCE
     assert logs[0].GuardAddress == someone
-    assert logs[0].Endorse == True
+    assert logs[0].Endorse == False
 
     #Test to see if i can vote again
     with ape.reverts():
