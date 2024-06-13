@@ -255,7 +255,7 @@ def endorseStrategy(Nonce: uint256, vault: address):
     #Vote to endorse strategy
     self.PendingStrategyByVault[vault].VotesEndorse.append(msg.sender)
 
-    log StrategyVote(Nonce, vault, msg.sender, False)
+    log StrategyVote(Nonce, vault, msg.sender, True)
 
 
 @external
@@ -299,7 +299,7 @@ def rejectStrategy(Nonce: uint256, vault: address, replacementStrategy : Propose
             # Replace the current pending but rejected strategy with this new one.
             self._submitStrategy(replacementStrategy, vault)
 
-    log StrategyVote(Nonce, vault, msg.sender, True)
+    log StrategyVote(Nonce, vault, msg.sender, False)
 
 
 @external
