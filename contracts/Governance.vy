@@ -132,13 +132,10 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     if self.NextNonceByVault[vault] == 0:
         self.NextNonceByVault[vault] += 1
 
-    # No Strategy proposals if no governance guards
-    assert len(self.LGov) > 0, "Cannot Submit Strategy without Guards"
-
     # No using a Strategy function without a vault
     assert len(self.VaultList) > 0, "Cannot call Strategy function with no vault"
 
-    assert vault in self.VaultList, "vault not in vault list!"        
+    assert vault in self.VaultList, "Vault not in vault list!"        
 
     pending_strat: Strategy = self.PendingStrategyByVault[vault]
 
