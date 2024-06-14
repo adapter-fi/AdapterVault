@@ -9,11 +9,11 @@ PENDLE_ORACLE="0x66a1096C6366b2529274dF4f5D8247827fe4CEA8"
 
 
 #---- contracts deployed ----
-PENDLE_ADAPTER_BLUEPRINT    = "" #Update here if deployed
-ADAPTERVAULT_BLUEPRINT      = "" #Update here if deployed
-FUNDS_ALLOCATOR             = "" #Update here if deployed
-GOVERNANCE                  = "" #Update here if deployed
-PENDLE_FACTORY              = "" #Update here if deployed
+PENDLE_ADAPTER_BLUEPRINT    = "0x7D87e88aA7000fe8c2C3B450844A2dc3A2312919" #Update here if deployed
+ADAPTERVAULT_BLUEPRINT      = "0x3726de4D64A1c9e62eE6bF0b52a1354275B70086" #Update here if deployed
+FUNDS_ALLOCATOR             = "0x1904163120C9345c1b41C520481CC677768E944d" #Update here if deployed
+GOVERNANCE                  = "0xEdf4B1a86320a7b635F4a5E90044C928A16C781a" #Update here if deployed
+PENDLE_FACTORY              = "0xcd3FF638DB6C1266b312B567DDE687C26A3314e5" #Update here if deployed
 
 if "__main__" in __name__:
     rpc = os.environ.get("RPC_URL")
@@ -28,7 +28,7 @@ if "__main__" in __name__:
         print("estimated gas cost: ", 1534994 * gas_price/10**18, " ETH")
         input("Going to deploy PendleAdapter blueprint (ctrl+c to abort, enter to continue)")
         pa = boa.load_partial("contracts/adapters/PendleAdapter.vy")
-        pa.deploy_as_blueprint(gas=2000000) #1,534,994
+        pa.deploy_as_blueprint() #1,534,994
         exit()
     else:
         print("ADAPTERVAULT_BLUEPRINT already exists: ", PENDLE_ADAPTER_BLUEPRINT)
@@ -37,7 +37,7 @@ if "__main__" in __name__:
         print("estimated gas cost: ", 5343449 * gas_price/10**18, " ETH")
         input("Going to deploy AdapterVault blueprint (ctrl+c to abort, enter to continue)")
         pa = boa.load_partial("contracts/AdapterVault.vy")
-        pa.deploy_as_blueprint(gas=6000000) #5,343,449
+        pa.deploy_as_blueprint() #5,343,449
         exit()
     else:
         print("ADAPTERVAULT_BLUEPRINT already exists: ", ADAPTERVAULT_BLUEPRINT)
@@ -45,7 +45,7 @@ if "__main__" in __name__:
         print("estimated gas price is: ", gas_price/10**9, " gwei")
         print("estimated gas cost: ", 713222 * gas_price/10**18, " ETH")
         input("Going to deploy FundsAllocator (ctrl+c to abort, enter to continue)")
-        pa = boa.load("contracts/FundsAllocator.vy", gas=900000) #713222
+        pa = boa.load("contracts/FundsAllocator.vy") #713222
         print(pa) 
         exit()
     else:
@@ -54,7 +54,7 @@ if "__main__" in __name__:
         print("estimated gas price is: ", gas_price/10**9, " gwei")
         print("estimated gas cost: ", 2846735 * gas_price/10**18, " ETH")
         input("Going to deploy Governance (ctrl+c to abort, enter to continue)")
-        pa = boa.load("contracts/Governance.vy", MULTISIG, 60*60*24*30, gas=3000000) #2846735
+        pa = boa.load("contracts/Governance.vy", MULTISIG, 60*60*24*30) #2846735
         print(pa) 
         exit()
     else:
@@ -63,7 +63,7 @@ if "__main__" in __name__:
         print("estimated gas price is: ", gas_price/10**9, " gwei")
         print("estimated gas cost: ", 896928 * gas_price/10**18, " ETH")
         input("Going to deploy PendleVaultFactory (ctrl+c to abort, enter to continue)")
-        pa = boa.load("contracts/PendleVaultFactory.vy", gas=1000000) #896928
+        pa = boa.load("contracts/PendleVaultFactory.vy") #896928
         print(pa) 
         exit()
     else:
@@ -84,7 +84,7 @@ if "__main__" in __name__:
         print("estimated gas price is: ", gas_price/10**9, " gwei")
         print("estimated gas cost: ", 45816 * gas_price/10**18, " ETH")
         input("Going to deploy set governance settings into factory (ctrl+c to abort, enter to continue)")
-        factory.update_governance(GOVERNANCE, gas=10000) #45816
+        factory.update_governance(GOVERNANCE, gas=100000) #45816
     if factory.funds_allocator_impl() != FUNDS_ALLOCATOR:
         print("estimated gas price is: ", gas_price/10**9, " gwei")
         print("estimated gas cost: ", 45816 * gas_price/10**18, " ETH")
@@ -95,6 +95,8 @@ if "__main__" in __name__:
         print("estimated gas cost: ", 68330 * gas_price/10**18, " ETH")
         input("Going to deploy set blueprint into factory (ctrl+c to abort, enter to continue)")
         factory.update_blueprints(ADAPTERVAULT_BLUEPRINT, PENDLE_ADAPTER_BLUEPRINT, gas=200000) #68330
+
+
     if factory.owner() != MULTISIG:
         print("estimated gas price is: ", gas_price/10**9, " gwei")
         print("estimated gas cost: ", 28269 * gas_price/10**18, " ETH")
