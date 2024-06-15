@@ -35,6 +35,7 @@ event GovernanceContractChanged:
 
 event VoteForNewGovernance:
     NewGovernance: indexed(address)
+    Voter: indexed(address)
 
 event NewVault:
     vault: indexed(address)
@@ -59,8 +60,6 @@ struct AdapterStrategy:
 struct ProposedStrategy:
     LPRatios: AdapterStrategy[MAX_ADAPTERS]
     min_proposer_payout: uint256
-    APYNow: uint256
-    APYPredicted: uint256    
 
 event StrategyProposal:
     strategy : Strategy
@@ -81,8 +80,6 @@ struct Strategy:
     ProposerAddress: address
     LPRatios: AdapterStrategy[MAX_ADAPTERS]
     min_proposer_payout: uint256
-    APYNow: uint256
-    APYPredicted: uint256
     TSubmitted: uint256
     TActivated: uint256
     Withdrawn: bool
@@ -135,13 +132,10 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     if self.NextNonceByVault[vault] == 0:
         self.NextNonceByVault[vault] += 1
 
-    # No Strategy proposals if no governance guards
-    assert len(self.LGov) > 0, "Cannot Submit Strategy without Guards"
-
     # No using a Strategy function without a vault
     assert len(self.VaultList) > 0, "Cannot call Strategy function with no vault"
 
-    assert vault in self.VaultList, "vault not in vault list!"        
+    assert vault in self.VaultList, "Vault not in vault list!"        
 
     pending_strat: Strategy = self.PendingStrategyByVault[vault]
 
@@ -166,9 +160,6 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     # Confirm msg.sender Eligibility
     # Confirm msg.sender is not blacklisted
 
-    # Confirm strategy meets financial goal improvements.
-    assert strategy.APYPredicted - strategy.APYNow > 0, "Cannot Submit Strategy without APY Increase"
-
     strat : Strategy = empty(Strategy)
 
     strat.Nonce = self.NextNonceByVault[vault]
@@ -177,8 +168,6 @@ def _submitStrategy(strategy: ProposedStrategy, vault: address) -> uint256:
     strat.ProposerAddress = msg.sender
     strat.LPRatios = strategy.LPRatios
     strat.min_proposer_payout = strategy.min_proposer_payout
-    strat.APYNow = strategy.APYNow
-    strat.APYPredicted = strategy.APYPredicted
     strat.TSubmitted = block.timestamp
     strat.TActivated = 0    
     strat.Withdrawn = False
@@ -266,7 +255,7 @@ def endorseStrategy(Nonce: uint256, vault: address):
     #Vote to endorse strategy
     self.PendingStrategyByVault[vault].VotesEndorse.append(msg.sender)
 
-    log StrategyVote(Nonce, vault, msg.sender, False)
+    log StrategyVote(Nonce, vault, msg.sender, True)
 
 
 @external
@@ -305,12 +294,12 @@ def rejectStrategy(Nonce: uint256, vault: address, replacementStrategy : Propose
     strategy_ultimately_rejected : bool = (len(pending_strat.VotesReject) >= pending_strat.no_guards/2+1)
 
     # If there is a replacement strategy suggested and this is the vote that ultimately decides the thing...
-    if replacementStrategy.APYNow != 0: # Can't test against emtpty(ProposedStrategy) due to Vyper issue #2638.
+    if replacementStrategy.LPRatios[0].adapter != empty(address): # Can't test against empty(ProposedStrategy) due to Vyper issue #2638.
         if (not strategy_already_rejected) and strategy_ultimately_rejected:    
             # Replace the current pending but rejected strategy with this new one.
             self._submitStrategy(replacementStrategy, vault)
 
-    log StrategyVote(Nonce, vault, msg.sender, True)
+    log StrategyVote(Nonce, vault, msg.sender, False)
 
 
 @external
@@ -497,7 +486,7 @@ def replaceGovernance(NewGovernance: address, vault: address):
 
     #Check if sender has voted, if not log new vote
     if self.VotesGCByVault[vault][msg.sender] != NewGovernance: 
-        log VoteForNewGovernance(NewGovernance)
+        log VoteForNewGovernance(NewGovernance, msg.sender)
 
     #Record Vote
     self.VotesGCByVault[vault][msg.sender] = NewGovernance
@@ -515,7 +504,7 @@ def replaceGovernance(NewGovernance: address, vault: address):
             self.VotesGCByVault[vault][guard_addr] = empty(address)
 
 
-    log GovernanceContractChanged(Voter, NewGovernance, VoteCount, TotalGuards)
+        log GovernanceContractChanged(Voter, NewGovernance, VoteCount, TotalGuards)
 
 
 @external

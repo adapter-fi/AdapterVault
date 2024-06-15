@@ -24,9 +24,9 @@ import pytest
 from  pytest import raises
 
 #from .test_Governance import owner, governance_contract, dai, funds_alloc, vault_contract_one
-from .test_Governance import WEIGHTS, MIN_PROPOSER_PAYOUT, APYNOW, APYPREDICTED
+from .test_Governance import WEIGHTS, MIN_PROPOSER_PAYOUT
 
-STRATEGY = (WEIGHTS, MIN_PROPOSER_PAYOUT, APYNOW, APYPREDICTED)
+STRATEGY = (WEIGHTS, MIN_PROPOSER_PAYOUT)
 
 # MUST match Governance.vy MAX_GUARDS
 MAX_GUARDS = 5
