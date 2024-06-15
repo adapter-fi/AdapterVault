@@ -10,13 +10,19 @@ PENDLE_ORACLE="0x66a1096C6366b2529274dF4f5D8247827fe4CEA8"
 
 #---- contracts deployed ----
 PENDLE_ADAPTER_BLUEPRINT    = "0x7D87e88aA7000fe8c2C3B450844A2dc3A2312919" #Update here if deployed
-ADAPTERVAULT_BLUEPRINT      = "0x3726de4D64A1c9e62eE6bF0b52a1354275B70086" #Update here if deployed
+ADAPTERVAULT_BLUEPRINT      = "0x295d9c01b1A8904322198E97172604a38cac034e" #Update here if deployed
 FUNDS_ALLOCATOR             = "0x1904163120C9345c1b41C520481CC677768E944d" #Update here if deployed
 GOVERNANCE                  = "0xEdf4B1a86320a7b635F4a5E90044C928A16C781a" #Update here if deployed
 PENDLE_FACTORY              = "0xcd3FF638DB6C1266b312B567DDE687C26A3314e5" #Update here if deployed
+PT_MIGRATOR                 = "0x33376eE814558e305c6279C66117499757C6F92f"
 
 #------ vaults -----------
-VAULT_EZETH = "0xe453223ef8ba04dcbca13fae6468910ec1938992"
+VAULT_RSETH = "0xB8D5D36A40019f79b6B70a1932805476B2aCa6eF"
+VAULT_RSWETH = "0x4521B903d65103Cd6265F898fE4ac3243884273f"
+VAULT_EETH = "0xd1Ea80934222a21e330DAe9ad0354B4C139ae49F"
+VAULT_EZETH = "0x1099ac45b80059733F719C7Dedf5a8ffCf02aAa8"
+VAULT_USDE = "0xE0229dCFa4D84998484a27Ba01B4c2e78B1F02D3"
+VAULT_SUSDE = "0x10Efb86d59eB8Ae3d4a7966B4ab9Ceb97e96D212"
 #---------------------------
 
 
@@ -73,6 +79,15 @@ if "__main__" in __name__:
         exit()
     else:
         print("PENDLE_FACTORY already exists: ", PENDLE_FACTORY)
+    if PT_MIGRATOR == "":
+        print("estimated gas price is: ", gas_price/10**9, " gwei")
+        print("estimated gas cost: ", 896928 * gas_price/10**18, " ETH")
+        input("Going to deploy PTMigrationRouter (ctrl+c to abort, enter to continue)")
+        pa = boa.load("contracts/PTMigrationRouter.vy", PENDLE_ROUTER) #896928
+        print(pa) 
+        exit()
+    else:
+        print("PT_MIGRATOR already exists: ", PT_MIGRATOR)
     #Ensure all values for factory are correct... bottom-up, change owner last
     factory = boa.load_partial("contracts/PendleVaultFactory.vy").at(PENDLE_FACTORY)
     if factory.pendle_router() != PENDLE_ROUTER or factory.pendle_router_static() != PENDLE_ROUTER_STATIC or factory.pendle_oracle() != PENDLE_ORACLE:

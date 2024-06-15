@@ -15,14 +15,17 @@ PENDLE_ORACLE="0x1Fd95db7B7C0067De8D45C0cb35D59796adfD187"
 
 #---- contracts deployed ----
 PENDLE_ADAPTER_BLUEPRINT    = "0x7D87e88aA7000fe8c2C3B450844A2dc3A2312919" #Update here if deployed
-ADAPTERVAULT_BLUEPRINT      = "0x3726de4D64A1c9e62eE6bF0b52a1354275B70086" #Update here if deployed
+ADAPTERVAULT_BLUEPRINT      = "0xf58c91A3896917EB30dAEDf17FCFC6DAFad90889" #Update here if deployed
 FUNDS_ALLOCATOR             = "0x1904163120C9345c1b41C520481CC677768E944d" #Update here if deployed
 GOVERNANCE                  = "0xEdf4B1a86320a7b635F4a5E90044C928A16C781a" #Update here if deployed
 PENDLE_FACTORY              = "0xcd3FF638DB6C1266b312B567DDE687C26A3314e5" #Update here if deployed
+PT_MIGRATOR                 = "0xd8cF5dce611A34589E876dF9bF1A89a39e9E5187"
 #---- contracts deployed ----
 
 #------ vaults -----------
-VAULT_EZETH = "0xe453223ef8ba04dcbca13fae6468910ec1938992"
+VAULT_EZETH = "0xB8D5D36A40019f79b6B70a1932805476B2aCa6eF"
+VAULT_RSETH = "0x4521B903d65103Cd6265F898fE4ac3243884273f"
+VAULT_WEETH = "0xd1Ea80934222a21e330DAe9ad0354B4C139ae49F"
 #---------------------------
 
 if "__main__" in __name__:
@@ -78,6 +81,15 @@ if "__main__" in __name__:
         exit()
     else:
         print("PENDLE_FACTORY already exists: ", PENDLE_FACTORY)
+    if PT_MIGRATOR == "":
+        print("estimated gas price is: ", gas_price/10**9, " gwei")
+        print("estimated gas cost: ", 896928 * gas_price/10**18, " ETH")
+        input("Going to deploy PTMigrationRouter (ctrl+c to abort, enter to continue)")
+        pa = boa.load("contracts/PTMigrationRouter.vy", PENDLE_ROUTER) #896928
+        print(pa) 
+        exit()
+    else:
+        print("PT_MIGRATOR already exists: ", PT_MIGRATOR)
     #Ensure all values for factory are correct... bottom-up, change owner last
     factory = boa.load_partial("contracts/PendleVaultFactory.vy").at(PENDLE_FACTORY)
     if factory.pendle_router() != PENDLE_ROUTER or factory.pendle_router_static() != PENDLE_ROUTER_STATIC or factory.pendle_oracle() != PENDLE_ORACLE:
