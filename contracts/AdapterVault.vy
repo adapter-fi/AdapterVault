@@ -24,10 +24,10 @@ MAX_ADAPTERS : constant(uint256) = 5
 MAX_SLIPPAGE_PERCENT : immutable(decimal)
 
 # Contract owner hold 10% of the yield.
-YIELD_FEE_PERCENTAGE : constant(uint256) = 10
+YIELD_FEE_PERCENTAGE : constant(uint256) = 2
 
 # 1% of the yield belongs to the Strategy proposer.
-PROPOSER_FEE_PERCENTAGE: constant(uint256) = 1
+PROPOSER_FEE_PERCENTAGE: constant(uint256) = 0
 
 # For use in support of _claim_fees
 enum FeeType:
