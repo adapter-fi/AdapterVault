@@ -15,6 +15,11 @@ FUNDS_ALLOCATOR             = "0x1904163120C9345c1b41C520481CC677768E944d" #Upda
 GOVERNANCE                  = "0xEdf4B1a86320a7b635F4a5E90044C928A16C781a" #Update here if deployed
 PENDLE_FACTORY              = "0xcd3FF638DB6C1266b312B567DDE687C26A3314e5" #Update here if deployed
 
+#------ vaults -----------
+VAULT_EZETH = "0xe453223ef8ba04dcbca13fae6468910ec1938992"
+#---------------------------
+
+
 if "__main__" in __name__:
     rpc = os.environ.get("RPC_URL")
     assert rpc is not None and rpc != "", "RPC_URL MUST BE PROVIDED!!!"
