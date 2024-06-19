@@ -12,52 +12,20 @@
 1. Activate your python virtual environment.
 2. Install all environmental dependencies: `make init`
 
-### Running hardhat node
-
-Currently you have to run the hardhat node yourself instead of letting ape run it due to some configuration issues.
-
-1. In a separate tab (remember check node versions in this new tab and WEB3_ALCHEMY_API_KEY): `make hardhat`
-
 ### Smoke Test
 
-1. Execute the unit tests: `./runtests`
+1. Execute the unit tests: `make test`
 
 If all your tests pass then you're good to go.
 
 
-#### Dealing with Issues
-
-Confirm node is correct. Most problems are due to node.
-```
-$ node --version
-v20.12.2
-```
-
-Make sure nothing is listening on port 8445.
-
-```
-sudo netstat -lntp | grep 8545
-```
-
-Ensure hardhat is running (see instructions above)
-
-#### Now in another shell:
-
-```
-./runtests
-```
-
-
-
 ## Test & Execution Environment 
 
-We're using [ApeWorX](https://github.com/ApeWorX) with [PyTest](https://github.com/pytest-dev/pytest) as our development environment.
+We're using [Titanoboa](https://github.com/vyperlang/titanoboa) with [PyTest](https://github.com/pytest-dev/pytest) as our development environment.
 
-[ApeWorX Discord](https://discord.gg/apeworx)
+[Titanoboa Discord](https://discord.com/channels/969926564286459934/990983542680993802)
 
-[ApeWorX Website](https://www.apeworx.io/)
-
-[ApeWorX Documentation](https://docs.apeworx.io/ape/stable/)
+[Titanoboa Documentation](https://titanoboa.readthedocs.io/en/latest/)
 
 [PyTest Website](https://pytest.org)
 
