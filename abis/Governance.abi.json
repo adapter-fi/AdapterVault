@@ -118,6 +118,11 @@
         "indexed": true,
         "name": "NewGovernance",
         "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "Voter",
+        "type": "address"
       }
     ],
     "name": "VoteForNewGovernance",
@@ -210,14 +215,6 @@
           },
           {
             "name": "min_proposer_payout",
-            "type": "uint256"
-          },
-          {
-            "name": "APYNow",
-            "type": "uint256"
-          },
-          {
-            "name": "APYPredicted",
             "type": "uint256"
           },
           {
@@ -316,14 +313,6 @@
           },
           {
             "name": "min_proposer_payout",
-            "type": "uint256"
-          },
-          {
-            "name": "APYNow",
-            "type": "uint256"
-          },
-          {
-            "name": "APYPredicted",
             "type": "uint256"
           },
           {
@@ -428,14 +417,6 @@
           {
             "name": "min_proposer_payout",
             "type": "uint256"
-          },
-          {
-            "name": "APYNow",
-            "type": "uint256"
-          },
-          {
-            "name": "APYPredicted",
-            "type": "uint256"
           }
         ],
         "name": "strategy",
@@ -532,14 +513,6 @@
           },
           {
             "name": "min_proposer_payout",
-            "type": "uint256"
-          },
-          {
-            "name": "APYNow",
-            "type": "uint256"
-          },
-          {
-            "name": "APYPredicted",
             "type": "uint256"
           }
         ],
@@ -818,14 +791,6 @@
             "type": "uint256"
           },
           {
-            "name": "APYNow",
-            "type": "uint256"
-          },
-          {
-            "name": "APYPredicted",
-            "type": "uint256"
-          },
-          {
             "name": "TSubmitted",
             "type": "uint256"
           },
@@ -896,14 +861,6 @@
           },
           {
             "name": "min_proposer_payout",
-            "type": "uint256"
-          },
-          {
-            "name": "APYNow",
-            "type": "uint256"
-          },
-          {
-            "name": "APYPredicted",
             "type": "uint256"
           },
           {

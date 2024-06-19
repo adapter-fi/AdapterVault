@@ -280,3 +280,33 @@ def test_markets_ezeth(setup_chain, trader, deployer, pendle_factory):
         return (wrapped * rate) // 10**18
 
     market_test(PENDLE_PT, ezeth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange)
+
+def test_markets_rseth(setup_chain, trader, deployer, pendle_factory):
+    #rsETH on mainnet
+    PENDLE_MARKET="0x6Ae79089b2CF4be441480801bb741A531d94312b"
+    RSETH="0x4186BFC76E2E237523CBC30FD220FE055156b41F"
+    PENDLE_PT="0xAFD22F824D51Fb7EeD4778d303d4388AC644b026"
+    # print(probe_token_slot(trader, RSETH))
+    orc = pendle_SY("0xf176fB51F4eB826136a54FDc71C50fCd2202E272")
+    def exchange(wrapped):
+        rate = orc.exchangeRate()
+        return (wrapped * rate) // 10**18
+    rseth = _generic_erc20(trader, RSETH, 5)
+    market_test(PENDLE_PT, rseth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange)
+
+
+def test_markets_eeth(setup_chain, trader, deployer, pendle_factory):
+    #stETH on mainnet
+    PENDLE_MARKET="0x952083cde7aaa11AB8449057F7de23A970AA8472" #Pendle: PT-stETH-26DEC24/SY-stETH Market Token
+    EETH="0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe"
+    PENDLE_PT="0x1c27Ad8a19Ba026ADaBD615F6Bc77158130cfBE4"
+    # print(probe_token_slot(trader, EETH))
+    # return
+    orc = pendle_SY("0xa6C895EB332E91c5b3D00B7baeEAae478cc502DA")
+    def exchange(wrapped):
+        rate = orc.exchangeRate()
+        return (wrapped * rate) // 10**18
+
+    eeth = _generic_erc20(trader, EETH, 51)
+    market_test(PENDLE_PT, eeth, trader, deployer, PENDLE_MARKET, pendle_factory, PENDLE_ORACLE, exchange, default_slippage=4.0)
+
