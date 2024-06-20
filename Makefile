@@ -8,6 +8,12 @@ init: check-node-version
 	venv-run --venv .venv_ape pip install -r requirements.ape.txt
 	npm ci
 
+clean:
+	rm -rf cache/* 
+	rm -rf .build
+	rm -rf node_modules
+	npm ci
+
 check-env:
 ifndef WEB3_ALCHEMY_API_KEY
 	$(error WEB3_ALCHEMY_API_KEY is undefined)

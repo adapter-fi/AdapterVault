@@ -907,9 +907,11 @@ def mint(_share_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes
     @return Asset value of _share_amount
     """
     assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
-    minted: uint256 = self._deposit(assetqty, _receiver, 0, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._deposit(assetqty, _receiver, 0, pregen_info)
     self._dirtyAssetCache()
-    return minted
+    return assets
 
 
 @external
@@ -1261,7 +1263,10 @@ def _adapter_withdraw(_adapter: address, _asset_amount: uint256, _withdraw_to: a
 
 
 @internal
-def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
+def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> (uint256, uint256):
+    """
+    returns shares minted, assets received
+    """
     assert _receiver != empty(address), "Cannot send shares to zero address."
 
     assert _asset_amount <= ERC20(asset).balanceOf(msg.sender), "4626Deposit insufficient funds."
@@ -1306,11 +1311,12 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     self._mint(_receiver, transfer_shares)
 
     # Update all-time assets deposited for yield tracking.
-    self.total_assets_deposited += total_after_assets - total_starting_assets
+    assets_received : uint256 = total_after_assets - total_starting_assets
+    self.total_assets_deposited += assets_received
 
-    log Deposit(msg.sender, _receiver, total_after_assets - total_starting_assets, transfer_shares)
+    log Deposit(msg.sender, _receiver, assets_received, transfer_shares)
 
-    return transfer_shares
+    return transfer_shares, assets_received
 
 
 @external
@@ -1324,9 +1330,11 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     @return Share amount deposited to receiver
     """
     # assert _asset_amount == 1000, "NOT 1000 deposit!" # BDM
-    result : uint256 = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
     self._dirtyAssetCache()
-    return result
+    return shares
 
 
 @internal
