@@ -969,9 +969,11 @@ def redeem(_share_amount: uint256, _receiver: address, _owner: address, pregen_i
     """
     assetqty: uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
     # NOTE - this is accepting the MAX_SLIPPAGE_PERCENT % slippage default.
-    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
+    shares : uint256 = 0 
+    assets : uint256 = 0 
+    shares, assets = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
     self._dirtyAssetCache()
-    return withdrawn
+    return assets
 
 
 # This structure must match definition in Funds Allocator contract.
@@ -1328,7 +1330,10 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
 
 
 @internal
-def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
+def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> (uint256, uint256):
+    """
+    returns shares consumed, assets returned
+    """
     #min_transfer_balance : uint256 = self._defaultSlippage(_asset_amount, _min_assets)
 
     # How many shares does it take to get the requested asset amount?
@@ -1368,7 +1373,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
 
     log Withdraw(msg.sender, _receiver, _owner, _asset_amount, shares)
 
-    return shares
+    return (shares, _asset_amount)
 
 
 @external
@@ -1382,9 +1387,11 @@ def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_ass
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount withdrawn to receiver
     """
-    result : uint256 = self._withdraw(_asset_amount, _receiver, _owner, _min_assets, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._withdraw(_asset_amount, _receiver, _owner, _min_assets, pregen_info)
     self._dirtyAssetCache()
-    return result
+    return shares
 
 
 ### ERC20 functionality.

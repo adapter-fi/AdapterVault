@@ -164,7 +164,7 @@ def test_vault_slippage(vault, deployer, trader, dai, adapter_two_percent_loss):
         local, adapters, total, ratios = vault.getCurrentBalances()
         print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
 
-def test_vault_redeem_no_slippage(vault, deployer, trader, dai, adapter_two_percent_loss):
+def test_vault_redeem_no_share_slippage(vault, deployer, trader, dai, adapter_two_percent_loss):
 
     with boa.env.prank(trader):
         # deposit & withdraw excercise ERC20 asset transfers and cause
@@ -178,6 +178,7 @@ def test_vault_redeem_no_slippage(vault, deployer, trader, dai, adapter_two_perc
         print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
 
         shares = vault.deposit(1000, trader)
+        assets = dai.balanceOf(trader)
 
         print("After 1000 deposit got %s shares for a total balance of %s shares.." % (shares, vault.balanceOf(trader)))
 
@@ -185,10 +186,12 @@ def test_vault_redeem_no_slippage(vault, deployer, trader, dai, adapter_two_perc
         print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
 
         # redeem 100 shares
-        vault.redeem(100, trader, trader)      
+        assets_moved = vault.redeem(100, trader, trader)      
         
         new_shares = vault.balanceOf(trader)
+        new_assets = dai.balanceOf(trader)
         print("After redeeming 100 shares trader now has %s shares." % new_shares)  
 
         assert shares - 100 == new_shares
+        assert new_assets - assets == assets_moved
 
