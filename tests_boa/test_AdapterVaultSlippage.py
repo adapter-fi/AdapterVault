@@ -195,3 +195,35 @@ def test_vault_redeem_no_share_slippage(vault, deployer, trader, dai, adapter_tw
         assert shares - 100 == new_shares
         assert new_assets - assets == assets_moved
 
+@pytest.mark.skip(reason="Fixed mint shares with a slippage adapter isn't actually possible.")
+def test_vault_mint_no_share_slippage(vault, deployer, trader, dai, adapter_two_percent_loss):
+
+    with boa.env.prank(trader):
+        # deposit & withdraw excercise ERC20 asset transfers and cause
+        # balanceAdapters to be called as well.
+
+        dai.approve(vault.address, dai.balanceOf(trader))
+        print("\ntest_vault use case:")
+        print("adapter now has %s dai." % dai.balanceOf(adapter_two_percent_loss))
+
+        local, adapters, total, ratios = vault.getCurrentBalances()
+        print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
+
+        assets = vault.mint(1000, trader)
+
+        print("After 1000 mint got %s assets for a total balance of %s shares.." % (assets, vault.balanceOf(trader)))
+
+        assert vault.balanceOf(trader) == 1000
+
+        local, adapters, total, ratios = vault.getCurrentBalances()
+        print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
+
+        # redeem 100 shares
+        assets_moved = vault.redeem(100, trader, trader)      
+        
+        new_shares = vault.balanceOf(trader)
+        new_assets = dai.balanceOf(trader)
+        print("After redeeming 100 shares trader now has %s shares." % new_shares)  
+
+        assert shares - 100 == new_shares
+        assert new_assets - assets == assets_moved
