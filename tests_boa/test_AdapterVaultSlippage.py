@@ -121,12 +121,7 @@ def vault(deployer, dai, funds_alloc, gov, adapter_two_percent_loss):
 
     return v
 
-def test_vault(vault, deployer, trader, dai, adapter_two_percent_loss):
-    """
-    broke_erc20 is a non-compliant ERC-20 token that doesn't have the required
-    boolean return values (much like USDT). Normally this causes Vyper to revert
-    during run time but we've altered AdapterVault to be able to deal with this.
-    """
+def test_vault_slippage(vault, deployer, trader, dai, adapter_two_percent_loss):
 
     with boa.env.prank(trader):
         # deposit & withdraw excercise ERC20 asset transfers and cause
@@ -169,21 +164,34 @@ def test_vault(vault, deployer, trader, dai, adapter_two_percent_loss):
         local, adapters, total, ratios = vault.getCurrentBalances()
         print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
 
+def test_vault_redeem_no_share_slippage(vault, deployer, trader, dai, adapter_two_percent_loss):
 
-    #     assert vault.balanceOf(trader) == 10000
+    with boa.env.prank(trader):
+        # deposit & withdraw excercise ERC20 asset transfers and cause
+        # balanceAdapters to be called as well.
 
-    #     vault.withdraw(5000, trader, trader)
+        dai.approve(vault.address, dai.balanceOf(trader))
+        print("\ntest_vault use case:")
+        print("adapter now has %s dai." % dai.balanceOf(adapter_two_percent_loss))
 
-    #     assert vault.balanceOf(trader) == 5000
+        local, adapters, total, ratios = vault.getCurrentBalances()
+        print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
 
-    # with boa.env.prank(deployer):
-    #     # Fake some returns
-    #     broke_erc20.transfer(vault, 10000)
-    #     assert vault.claimable_all_fees_available() > 0
+        shares = vault.deposit(1000, trader)
+        assets = dai.balanceOf(trader)
 
-    #     pre_balance = broke_erc20.balanceOf(deployer)
+        print("After 1000 deposit got %s shares for a total balance of %s shares.." % (shares, vault.balanceOf(trader)))
 
-    #     # Claiming fees is the last remaining occurrance of ERC20 transfers 
-    #     # within the vault so if this passes we are good.
-    #     vault.claim_all_fees()
-    #     assert broke_erc20.balanceOf(deployer) > pre_balance
+        local, adapters, total, ratios = vault.getCurrentBalances()
+        print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
+
+        # redeem 100 shares
+        assets_moved = vault.redeem(100, trader, trader)      
+        
+        new_shares = vault.balanceOf(trader)
+        new_assets = dai.balanceOf(trader)
+        print("After redeeming 100 shares trader now has %s shares." % new_shares)  
+
+        assert shares - 100 == new_shares
+        assert new_assets - assets == assets_moved
+

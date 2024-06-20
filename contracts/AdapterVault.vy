@@ -168,8 +168,8 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     @param _funds_allocator contract address
     @param _max_slippage_percent default maximum acceptable slippage for deposits/withdraws as a percentage
     """
-    assert _governance != empty(address), "Governance cannot be null address."
-    assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
+    #assert _governance != empty(address), "Governance cannot be null address."
+    #assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
     MAX_SLIPPAGE_PERCENT = _max_slippage_percent
 
     name = _name
@@ -907,9 +907,11 @@ def mint(_share_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes
     @return Asset value of _share_amount
     """
     assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
-    minted: uint256 = self._deposit(assetqty, _receiver, 0, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._deposit(assetqty, _receiver, 0, pregen_info)
     self._dirtyAssetCache()
-    return minted
+    return assets
 
 
 @external
@@ -969,9 +971,11 @@ def redeem(_share_amount: uint256, _receiver: address, _owner: address, pregen_i
     """
     assetqty: uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
     # NOTE - this is accepting the MAX_SLIPPAGE_PERCENT % slippage default.
-    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
+    shares : uint256 = 0 
+    assets : uint256 = 0 
+    shares, assets = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
     self._dirtyAssetCache()
-    return withdrawn
+    return assets
 
 
 # This structure must match definition in Funds Allocator contract.
@@ -1259,7 +1263,10 @@ def _adapter_withdraw(_adapter: address, _asset_amount: uint256, _withdraw_to: a
 
 
 @internal
-def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
+def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> (uint256, uint256):
+    """
+    returns shares minted, assets received
+    """
     assert _receiver != empty(address), "Cannot send shares to zero address."
 
     assert _asset_amount <= ERC20(asset).balanceOf(msg.sender), "4626Deposit insufficient funds."
@@ -1304,11 +1311,12 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     self._mint(_receiver, transfer_shares)
 
     # Update all-time assets deposited for yield tracking.
-    self.total_assets_deposited += total_after_assets - total_starting_assets
+    assets_received : uint256 = total_after_assets - total_starting_assets
+    self.total_assets_deposited += assets_received
 
-    log Deposit(msg.sender, _receiver, total_after_assets - total_starting_assets, transfer_shares)
+    log Deposit(msg.sender, _receiver, assets_received, transfer_shares)
 
-    return transfer_shares
+    return transfer_shares, assets_received
 
 
 @external
@@ -1322,13 +1330,18 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     @return Share amount deposited to receiver
     """
     # assert _asset_amount == 1000, "NOT 1000 deposit!" # BDM
-    result : uint256 = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
     self._dirtyAssetCache()
-    return result
+    return shares
 
 
 @internal
-def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
+def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> (uint256, uint256):
+    """
+    returns shares consumed, assets returned
+    """
     #min_transfer_balance : uint256 = self._defaultSlippage(_asset_amount, _min_assets)
 
     # How many shares does it take to get the requested asset amount?
@@ -1368,7 +1381,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
 
     log Withdraw(msg.sender, _receiver, _owner, _asset_amount, shares)
 
-    return shares
+    return (shares, _asset_amount)
 
 
 @external
@@ -1382,9 +1395,11 @@ def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_ass
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount withdrawn to receiver
     """
-    result : uint256 = self._withdraw(_asset_amount, _receiver, _owner, _min_assets, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._withdraw(_asset_amount, _receiver, _owner, _min_assets, pregen_info)
     self._dirtyAssetCache()
-    return result
+    return shares
 
 
 ### ERC20 functionality.
