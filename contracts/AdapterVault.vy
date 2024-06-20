@@ -1301,6 +1301,11 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
         assert real_shares >= _min_shares, "ERROR - unable to meet minimum slippage for this deposit!"
 
         # We'll transfer what was received.
+        # NOTE - updating transfer_shares means that we are unable to fulfill mint semantics
+        #        for a 4626 that has to deal with slippage. The issue is we cannot fix the share
+        #        qty because we have no ability to predict the actual asset qty required to get
+        #        these shares as it's only AFTER we transfer the assets from the minter/depositer
+        #        that we can discover what the adapter with slippage actually credits us with.        
         transfer_shares = real_shares
         log SlippageDeposit(msg.sender, _receiver, _asset_amount, transfer_shares, transfer_shares)
 
