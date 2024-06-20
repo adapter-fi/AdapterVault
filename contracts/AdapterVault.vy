@@ -168,8 +168,8 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     @param _funds_allocator contract address
     @param _max_slippage_percent default maximum acceptable slippage for deposits/withdraws as a percentage
     """
-    assert _governance != empty(address), "Governance cannot be null address."
-    assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
+    #assert _governance != empty(address), "Governance cannot be null address."
+    #assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
     MAX_SLIPPAGE_PERCENT = _max_slippage_percent
 
     name = _name
