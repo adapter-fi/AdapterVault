@@ -168,8 +168,9 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint8, _erc20ass
     @param _funds_allocator contract address
     @param _max_slippage_percent default maximum acceptable slippage for deposits/withdraws as a percentage
     """
-    assert _governance != empty(address), "Governance cannot be null address."
-    assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
+    # BDM - had to remove these two assertions so the code size would be small enough to deploy.
+    #assert _governance != empty(address), "Governance cannot be null address."
+    #assert _funds_allocator != empty(address), "Fund allocator cannot be null address."
     MAX_SLIPPAGE_PERCENT = _max_slippage_percent
 
     name = _name
@@ -907,9 +908,11 @@ def mint(_share_amount: uint256, _receiver: address, pregen_info: DynArray[Bytes
     @return Asset value of _share_amount
     """
     assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
-    minted: uint256 = self._deposit(assetqty, _receiver, 0, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._deposit(assetqty, _receiver, 0, pregen_info)
     self._dirtyAssetCache()
-    return minted
+    return assets
 
 
 @external
@@ -969,9 +972,11 @@ def redeem(_share_amount: uint256, _receiver: address, _owner: address, pregen_i
     """
     assetqty: uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
     # NOTE - this is accepting the MAX_SLIPPAGE_PERCENT % slippage default.
-    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
+    shares : uint256 = 0 
+    assets : uint256 = 0 
+    shares, assets = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
     self._dirtyAssetCache()
-    return withdrawn
+    return assets
 
 
 # This structure must match definition in Funds Allocator contract.
@@ -1198,8 +1203,6 @@ def _adapter_deposit(_adapter: address, _asset_amount: uint256, _pregen_info: Dy
 
     starting_assets : uint256 = self._adapterAssets(_adapter)
 
-    #assert _asset_amount == 1000, "NOT 1000 _adapter_deposit!" # BDM
-
     response = raw_call(
         _adapter,
         _abi_encode(_asset_amount, pregen_info, method_id=method_id("deposit(uint256,bytes)")),
@@ -1259,7 +1262,10 @@ def _adapter_withdraw(_adapter: address, _asset_amount: uint256, _withdraw_to: a
 
 
 @internal
-def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
+def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> (uint256, uint256):
+    """
+    returns shares minted, assets received
+    """
     assert _receiver != empty(address), "Cannot send shares to zero address."
 
     assert _asset_amount <= ERC20(asset).balanceOf(msg.sender), "4626Deposit insufficient funds."
@@ -1277,8 +1283,6 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     # Move assets to this contract from caller in one go.
     ERC20(asset).transferFrom(msg.sender, self, _asset_amount, default_return_value=True)
 
-    # assert _asset_amount == 1000, "NOT 1000 _deposit!" # BDM
-
     # Clear the asset cache for vault but not adapters.
     self._dirtyAssetCache(True, False)
 
@@ -1286,7 +1290,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
 
     total_after_assets : uint256 = self._totalAssetsCached()
     assert total_after_assets > total_starting_assets, "ERROR - deposit resulted in loss of assets!"
-    #real_shares : uint256 = convert(convert((total_after_assets - total_starting_assets), decimal) * spot_share_price, uint256)
+
     deposit_value : uint256 = total_after_assets-total_starting_assets
 
     # We use total_starting_assests to get a quote for the actual shares based on prior rates
@@ -1297,6 +1301,11 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
         assert real_shares >= _min_shares, "ERROR - unable to meet minimum slippage for this deposit!"
 
         # We'll transfer what was received.
+        # NOTE - updating transfer_shares means that we are unable to fulfill mint semantics
+        #        for a 4626 that has to deal with slippage. The issue is we cannot fix the share
+        #        qty because we have no ability to predict the actual asset qty required to get
+        #        these shares as it's only AFTER we transfer the assets from the minter/depositer
+        #        that we can discover what the adapter with slippage actually credits us with.        
         transfer_shares = real_shares
         log SlippageDeposit(msg.sender, _receiver, _asset_amount, transfer_shares, transfer_shares)
 
@@ -1304,11 +1313,12 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
     self._mint(_receiver, transfer_shares)
 
     # Update all-time assets deposited for yield tracking.
-    self.total_assets_deposited += total_after_assets - total_starting_assets
+    assets_received : uint256 = total_after_assets - total_starting_assets
+    self.total_assets_deposited += assets_received
 
-    log Deposit(msg.sender, _receiver, total_after_assets - total_starting_assets, transfer_shares)
+    log Deposit(msg.sender, _receiver, assets_received, transfer_shares)
 
-    return transfer_shares
+    return transfer_shares, assets_received
 
 
 @external
@@ -1321,19 +1331,23 @@ def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount deposited to receiver
     """
-    # assert _asset_amount == 1000, "NOT 1000 deposit!" # BDM
-    result : uint256 = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._deposit(_asset_amount, _receiver, _min_shares, pregen_info)
     self._dirtyAssetCache()
-    return result
+    return shares
 
 
 @internal
-def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> uint256:
-    #min_transfer_balance : uint256 = self._defaultSlippage(_asset_amount, _min_assets)
+def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_assets: uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> (uint256, uint256):
+    """
+    returns shares consumed, assets returned
+    """
 
     # How many shares does it take to get the requested asset amount?
+    # NOTE - it is CRITICAL that shares is fixed immediately before slippage is considered
+    #        because we implement redeem in terms of _withdraw.
     shares: uint256 = self._convertToShares(_asset_amount, self._totalAssetsCached())
-    #xcbal : uint256 = self.balanceOf[_owner]
 
     # Owner has adequate shares?
     assert self.balanceOf[_owner] >= shares, "Owner has inadequate shares for this withdraw."
@@ -1368,7 +1382,7 @@ def _withdraw(_asset_amount: uint256, _receiver: address, _owner: address, _min_
 
     log Withdraw(msg.sender, _receiver, _owner, _asset_amount, shares)
 
-    return shares
+    return (shares, _asset_amount)
 
 
 @external
@@ -1382,9 +1396,11 @@ def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_ass
     @param pregen_info Optional list of bytes to be sent to each adapter. These are usually off-chain computed results which optimize the on-chain call
     @return Share amount withdrawn to receiver
     """
-    result : uint256 = self._withdraw(_asset_amount, _receiver, _owner, _min_assets, pregen_info)
+    shares : uint256 = 0
+    assets : uint256 = 0
+    shares, assets = self._withdraw(_asset_amount, _receiver, _owner, _min_assets, pregen_info)
     self._dirtyAssetCache()
-    return result
+    return shares
 
 
 ### ERC20 functionality.
