@@ -1264,7 +1264,7 @@ def _adapter_withdraw(_adapter: address, _asset_amount: uint256, _withdraw_to: a
 @internal
 def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]) -> (uint256, uint256):
     """
-    returns shares minted, assets received
+    returns shares minted, assets taken
     """
     assert _receiver != empty(address), "Cannot send shares to zero address."
 
@@ -1318,7 +1318,7 @@ def _deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256, 
 
     log Deposit(msg.sender, _receiver, assets_received, transfer_shares)
 
-    return transfer_shares, assets_received
+    return transfer_shares, _asset_amount
 
 
 @external
