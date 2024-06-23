@@ -4,9 +4,9 @@
 
 ### Review Date(s): 6/9/24 - 6/10/24
 
-### Fix Review Date(s): 6/13/24
+### Fix Review Date(s): 6/13/24 & 6/20/24
 
-### Fix Review Hash: [a66037f](https://github.com/adapter-fi/AdapterVault/tree/a66037feaf156f0e7195d949f0ed3ce6a716e94c)
+### Fix Review Hash: [b508330](https://github.com/adapter-fi/AdapterVault/commit/b50833001923bae3808380fb932d415f9cbba3c0)
 
 # 0x52 Background
 
@@ -17,7 +17,6 @@ As an independent smart contract auditor I have completed over 100 separate revi
 The [Adapter Fi](https://github.com/adapter-fi/) repo was reviewed at commit hash [c7c6de9](https://github.com/adapter-fi/AdapterVault/commit/c7c6de9d512e4c33056c752aa9b2bec77516463a)
 
 In-Scope Contracts
-
 - contracts/AdapterVault.vy
 - contracts/FundsAllocator.vy
 - contracts/Governance.vy
@@ -25,26 +24,26 @@ In-Scope Contracts
 - contracts/PendleVaultFactory.vy
 
 Deployment Chain(s)
-
 - Ethereum Mainnet
 - Arbitrum Mainnet
 
 # Summary of Findings
 
-| Identifier | Title                                                                                                                      | Severity | Mitigated |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------- | -------- | --------- |
-| [L-01]     | [Adapter maximum withdrawal may be bypassed in some cases](#l-01-adapter-maximum-withdrawal-may-be-bypassed-in-some-cases) | LOW      | ✔️        |
-| [L-02]     | [Strategy APY checks are impossible to enforce](#l-02-strategy-apy-checks-are-impossible-to-enforce)                       | LOW      | ✔️        |
-| [QA-01]    | [Voting for new governance will emit incorrect event](#qa-01-voting-for-new-governance-will-emit-incorrect-event)          | QA       | ✔️        |
-| [QA-02]    | [Voting event isn't descriptive and lacks key information](#qa-02-voting-event-isnt-descriptive-and-lacks-key-information) | QA       | ✔️        |
-| [QA-03]    | [Redundant assert statement](#qa-03-redundant-assert-statement)                                                            | QA       | ✔️        |
-| [QA-04]    | [Voting events are emitted with incorrect information](#qa-04-voting-events-are-emitted-with-incorrect-information)        | QA       | ✔️        |
+|  Identifier  | Title                        | Severity      | Mitigated |
+| ------ | ---------------------------- | ------------- | ----- |
+| [L-01] | [Adapter maximum withdrawal may be bypassed in some cases](#l-01-adapter-maximum-withdrawal-may-be-bypassed-in-some-cases) | LOW | ✔️ |
+| [L-02] | [Strategy APY checks are impossible to enforce](#l-02-strategy-apy-checks-are-impossible-to-enforce) | LOW | ✔️ |
+| [L-03] | [Mint and redeem are not EIP-4626 compatible](#l-03-mint-and-redeem-are-not-eip-4626-compatible) | LOW | ✔️ |
+| [QA-01] | [Voting for new governance will emit incorrect event](#qa-01-voting-for-new-governance-will-emit-incorrect-event) | QA | ✔️ |
+| [QA-02] | [Voting event isn't descriptive and lacks key information](#qa-02-voting-event-isnt-descriptive-and-lacks-key-information) | QA | ✔️ |
+| [QA-03] | [Redundant assert statement](#qa-03-redundant-assert-statement) | QA | ✔️ |
+| [QA-04] | [Voting events are emitted with incorrect information](#qa-04-voting-events-are-emitted-with-incorrect-information) | QA | ✔️ |
 
 # Detailed Findings
 
 ## [L-01] Adapter maximum withdrawal may be bypassed in some cases
 
-### Details
+### Details 
 
 [FundsAllocator.vy#L65-L73](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/FundsAllocator.vy#L65-L73)
 
@@ -75,26 +74,26 @@ Fixed as recommended in commit [3a170d4](https://github.com/adapter-fi/AdapterVa
 
 ## [L-02] Strategy APY checks are impossible to enforce
 
-### Details
+### Details 
 
 [Governance.vy#L79-L92](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/Governance.vy#L79-L92)
 
 struct Strategy:
-Nonce: uint256
-ProposerAddress: address
-LPRatios: AdapterStrategy[MAX_ADAPTERS]
-min_proposer_payout: uint256
-APYNow: uint256
-APYPredicted: uint256
-TSubmitted: uint256
-TActivated: uint256
-Withdrawn: bool
-no_guards: uint256
-VotesEndorse: DynArray[address, MAX_GUARDS]
-VotesReject: DynArray[address, MAX_GUARDS]
-VaultAddress: address
+    Nonce: uint256
+    ProposerAddress: address
+    LPRatios: AdapterStrategy[MAX_ADAPTERS]
+    min_proposer_payout: uint256
+    APYNow: uint256
+    APYPredicted: uint256
+    TSubmitted: uint256
+    TActivated: uint256
+    Withdrawn: bool
+    no_guards: uint256
+    VotesEndorse: DynArray[address, MAX_GUARDS]
+    VotesReject: DynArray[address, MAX_GUARDS]
+    VaultAddress: address
 
-When supplying a new strategy the above struct is supplied with APY estimates of both the current and proposed strategies.
+When supplying a new strategy the above struct is supplied with APY estimates of both the current and proposed strategies. 
 
 [Governance.vy#L169-L170](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/Governance.vy#L169-L170)
 
@@ -115,15 +114,50 @@ Only trusted parties are allowed to submit proposals so I would recommend a remo
 
 Fixed by removing APY system completely in commit [d75679a](https://github.com/adapter-fi/AdapterVault/commit/d75679a7bf6547e8454bd89a56229b79fca53dce).
 
+## [L-03] Mint and redeem are not EIP-4626 compatible
+
+### Details 
+
+**Found by the Adapter Fi Team**
+
+[AdapterVault.vy#L972-L974](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/AdapterVault.vy#L972-L974)
+
+    withdrawn: uint256 = self._withdraw(assetqty, _receiver, _owner, 0, pregen_info)
+    self._dirtyAssetCache()
+    return withdrawn
+
+[AdapterVault.vy#L909-L912](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/AdapterVault.vy#L909-L912)
+
+    assetqty : uint256 = self._convertToAssets(_share_amount, self._totalAssetsCached())
+    minted: uint256 = self._deposit(assetqty, _receiver, 0, pregen_info)
+    self._dirtyAssetCache()
+    return minted
+
+According to the EIP-4626 spec, both mint and redeem are required to return the number of assets taken/received. As seen above both return shares rather than assets. This inconsistency will cause certain integrators to be unable to properly integrate with the vault. 
+
+### Lines of Code
+
+[AdapterVault.vy#L901-L912](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/AdapterVault.vy#L901-L912)
+
+[AdapterVault.vy#L961-L974](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/AdapterVault.vy#L961-L974)
+
+### Recommendation
+
+Mint and redeem should be adjusted to return assets rather than shares to properly align with the EIP-4626 spec
+
+### Remediation
+
+Fixed as recommended in commit [1b78470](https://github.com/adapter-fi/AdapterVault/commit/1b78470dc2c98caf777c9e9c0451ab8263fd6a69).
+
 ## [QA-01] Voting for new governance will emit incorrect event
 
-### Details
+### Details 
 
 [Governance.vy#L510-L518](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/Governance.vy#L510-L518)
 
     if len(self.LGov) == VoteCount:
         AdapterVault(vault).replaceGovernanceContract(NewGovernance)
-
+        
         # Clear out the old votes.
         for guard_addr in self.LGov:
             self.VotesGCByVault[vault][guard_addr] = empty(address)
@@ -147,11 +181,11 @@ Fixed as recommended in commit [f0adb76](https://github.com/adapter-fi/AdapterVa
 
 ## [QA-02] Voting event isn't descriptive and lacks key information
 
-### Details
+### Details 
 
 [Governance.vy#L500](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/Governance.vy#L500)
 
-    if self.VotesGCByVault[vault][msg.sender] != NewGovernance:
+    if self.VotesGCByVault[vault][msg.sender] != NewGovernance: 
         log VoteForNewGovernance(NewGovernance)
 
 Here the `VoteForNewGovernance` event is emitted. This lacks many key pieces of information like who is voting and which vault it is for.
@@ -170,7 +204,7 @@ Fixed in commit [2b8c2bf](https://github.com/adapter-fi/AdapterVault/commit/2b8c
 
 ## [QA-03] Redundant assert statement
 
-### Details
+### Details 
 
 [Governance.vy#L133-L139](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/Governance.vy#L133-L139)
 
@@ -198,7 +232,7 @@ Fixed in commit [1cf7d74](https://github.com/adapter-fi/AdapterVault/commit/1cf7
 
 ## [QA-04] Voting events are emitted with incorrect information
 
-### Details
+### Details 
 
 [Governance.vy#L269](https://github.com/adapter-fi/AdapterVault/blob/e8caa31abadb3004a132af369c4dfdbf420d922c/contracts/Governance.vy#L269)
 
