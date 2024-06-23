@@ -227,3 +227,5 @@ def test_vault_mint_no_share_slippage(vault, deployer, trader, dai, adapter_two_
 
         assert shares - 100 == new_shares
         assert new_assets - assets == assets_moved
+
+        
