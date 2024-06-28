@@ -223,11 +223,11 @@ def market_test(_pendle_pt, asset, trader, deployer, _pendle_market, pendle_fact
 
         assert boa.env.evm.patch.timestamp > pendleMarket.expiry()
     with boa.env.prank(adaptervault.address):
-        adapter_assets = pendle_adapter.totalAssets()
+        adapter_assets = oracle(pendle_adapter.totalAssets())
         adapter_pt = pt.balanceOf(adaptervault)
         print("adapter_assets: ", adapter_assets)
         print("adapter_pt: ", adapter_pt)
-        assert adapter_assets==adapter_pt, "PT should be pegged to assets post-maturity"
+        assert adapter_assets==pytest.approx(adapter_pt), "PT should be pegged to assets post-maturity"
 
     with boa.env.prank(trader):
         print(adaptervault.totalAssets())

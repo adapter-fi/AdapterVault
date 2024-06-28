@@ -122,6 +122,7 @@ interface YieldToken:
 
 interface PendlePtLpOracle:
     def getPtToAssetRate(market: address, duration: uint32) -> uint256: view
+    def getPtToSyRate(market: address, duration: uint32) -> uint256: view
     def getOracleState(market: address, duration: uint32) -> (bool, uint16, bool): nonpayable
 
 implements: IAdapter
@@ -184,6 +185,18 @@ def vault_location() -> address:
     return self
 
 
+@internal
+@view
+def asset_to_sy(asset_amount: uint256) -> uint256:
+    #How much SY does given asset amount mint
+    return SYToken(sy_token).previewDeposit(asset, asset_amount)
+
+
+@internal
+@view
+def sy_to_asset(sy_amount: uint256) -> uint256:
+    #How much SY does given asset amount mint
+    return SYToken(sy_token).previewRedeem(asset, sy_amount)
 
 @internal
 @view
@@ -191,8 +204,9 @@ def assetToPT(asset_amount: uint256) -> uint256:
     if asset_amount == 0:
         #optimization for empty adapter
         return 0
-    rate: uint256 = PendlePtLpOracle(pendleOracle).getPtToAssetRate(pendleMarket, TWAP_DURATION)
-    pt: uint256 = (asset_amount * ONE) / rate
+    sy_amount: uint256 = self.asset_to_sy(asset_amount)
+    rate: uint256 = PendlePtLpOracle(pendleOracle).getPtToSyRate(pendleMarket, TWAP_DURATION)
+    pt: uint256 = (sy_amount * ONE) / rate
     return pt
 
 @internal
@@ -201,9 +215,9 @@ def PTToAsset(pt: uint256) -> uint256:
     if pt == 0 :
         #optimization for empty adapter
         return 0
-    rate: uint256 = PendlePtLpOracle(pendleOracle).getPtToAssetRate(pendleMarket, TWAP_DURATION)
-    asset_amount: uint256 = (pt * rate) / ONE
-    return asset_amount
+    rate: uint256 = PendlePtLpOracle(pendleOracle).getPtToSyRate(pendleMarket, TWAP_DURATION)
+    sy_amount: uint256 = (pt * rate) / ONE
+    return self.sy_to_asset(sy_amount)
 
 @internal
 @view

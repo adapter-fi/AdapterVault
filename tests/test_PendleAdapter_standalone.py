@@ -120,7 +120,7 @@ def test_pendle_adapter_standalone(project, pendle_adapter, pt, steth, pendleRou
     oracle_price = pendleOracle.getPtToAssetRate(PENDLE_MARKET, 900)
     total_assets = pendle_adapter.totalAssets(sender=trader)
 
-    assert total_assets == (pt_bal * oracle_price) // 10**18, "total_assets incorrect"
+    assert total_assets == pytest.approx( (pt_bal * oracle_price) // 10**18), "total_assets incorrect"
     assert total_assets < 100*10**18, "total_assets should be less than 100 stETH, due to slippage"
     print(total_assets / 10**18)
         
@@ -143,7 +143,7 @@ def test_pendle_adapter_standalone(project, pendle_adapter, pt, steth, pendleRou
     total_assets = pendle_adapter.totalAssets(sender=trader)
     pt_bal = pt.balanceOf(trader)
 
-    assert total_assets == pt_bal, "PT should be pegged to asset post-maturity"
+    assert total_assets == pytest.approx(pt_bal), "PT should be pegged to asset post-maturity"
     assert pendle_adapter.maxWithdraw(sender=trader) == total_assets, "max withdraw must equal total assets"
 
 
