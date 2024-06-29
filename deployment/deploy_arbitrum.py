@@ -1,5 +1,6 @@
-import boa, os
+import boa, os, json
 from eth_account import Account
+from decimal import Decimal
 
 NOTHING="0x0000000000000000000000000000000000000000"
 
@@ -15,7 +16,7 @@ PENDLE_ORACLE="0x1Fd95db7B7C0067De8D45C0cb35D59796adfD187"
 
 #---- contracts deployed ----
 PENDLE_ADAPTER_BLUEPRINT    = "0x7D87e88aA7000fe8c2C3B450844A2dc3A2312919" #Update here if deployed
-ADAPTERVAULT_BLUEPRINT      = "0xf58c91A3896917EB30dAEDf17FCFC6DAFad90889" #Update here if deployed
+ADAPTERVAULT_BLUEPRINT      = "0xe848ECE45a513b1bc4434c788f8b53DFF4E9BB20" #Update here if deployed
 FUNDS_ALLOCATOR             = "0x1904163120C9345c1b41C520481CC677768E944d" #Update here if deployed
 GOVERNANCE                  = "0xEdf4B1a86320a7b635F4a5E90044C928A16C781a" #Update here if deployed
 PENDLE_FACTORY              = "0xcd3FF638DB6C1266b312B567DDE687C26A3314e5" #Update here if deployed
@@ -23,10 +24,40 @@ PT_MIGRATOR                 = "0xd8cF5dce611A34589E876dF9bF1A89a39e9E5187"
 #---- contracts deployed ----
 
 #------ vaults -----------
-VAULT_EZETH = "0xB8D5D36A40019f79b6B70a1932805476B2aCa6eF"
-VAULT_RSETH = "0x4521B903d65103Cd6265F898fE4ac3243884273f"
-VAULT_WEETH = "0xd1Ea80934222a21e330DAe9ad0354B4C139ae49F"
+VAULT_EZETH = "0x1099ac45b80059733F719C7Dedf5a8ffCf02aAa8"
+VAULT_RSETH = "0xe0229dcfa4d84998484a27ba01b4c2e78b1f02d3"
+VAULT_WEETH = "0x10efb86d59eb8ae3d4a7966b4ab9ceb97e96d212"
 #---------------------------
+
+
+def generate(market, asset):
+    rpc = os.environ.get("RPC_URL")
+    assert rpc is not None and rpc != "", "RPC_URL MUST BE PROVIDED!!!"
+    boa.set_network_env(rpc)
+    private_key = os.environ.get("PRIVATE_KEY")
+    assert private_key is not None and private_key != "", "PRIVATE_KEY MUST BE PROVIDED!!!"
+    boa.env.add_account(Account.from_key(private_key))
+    with open("contracts/vendor/IPMarketV3.json") as f:
+        j = json.load(f)
+        _market = boa.loads_abi(json.dumps(j["abi"]), name="IPMarketV3").at(market)
+    sy, pt, yt = _market.readTokens()
+    print(sy, pt, yt)
+    pt = boa.load_partial("contracts/test_helpers/ERC20.vy").at(pt)
+
+    pt_name = pt.name()
+    pt_symbol = pt.symbol()
+    decimals = pt.decimals()
+    symbol = "a" + "-".join( pt_symbol.split("-")[:2])
+    name = "Adapter " + " ".join(pt_name.split(" ")[:-1])
+    print(name, symbol, decimals)
+    _asset = boa.load_partial("contracts/test_helpers/ERC20.vy").at(asset)
+    bal = _asset.balanceOf(MULTISIG)
+    print(bal)
+    factory = boa.load_partial("contracts/PendleVaultFactory.vy").at(PENDLE_FACTORY)
+    args = [asset, market, name, symbol, decimals, Decimal(2.0), bal]
+    print("args = ", args)
+    print("0x" + factory.deploy_pendle_vault.prepare_calldata(asset, market, name, symbol, decimals, Decimal(2.0), bal).hex())
+
 
 if "__main__" in __name__:
     rpc = os.environ.get("RPC_URL")
