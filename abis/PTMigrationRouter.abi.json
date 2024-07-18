@@ -37,6 +37,38 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "asset_in",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "asset_out",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "amount_in",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "amount_out",
+        "type": "uint256"
+      }
+    ],
+    "name": "Swapped",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "name": "_pendleRouter",
