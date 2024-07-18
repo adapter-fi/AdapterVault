@@ -137,8 +137,8 @@ def test_pt_migration_eeth_zap_uni(setup_chain, trader, pendleRouter, pendle_mig
         path += eth_abi.encode(["address"], [WETH])[-20:]
         path += eth_abi.encode(["uint24"], [500])[-3:]
         path += eth_abi.encode(["address"], [RSWETH])[-20:]
-        print(path.hex())
-        pendle_migrator.zap_in_univ3(
+        print("0x" + path.hex())
+        shares_got = pendle_migrator.zap_in_univ3(
             MARKET,
             10**18,
             WEETH,
@@ -150,4 +150,36 @@ def test_pt_migration_eeth_zap_uni(setup_chain, trader, pendleRouter, pendle_mig
             VAULT_RSWETH,
             0,
         )
-    
+        print(shares_got)
+        #compare to actual balance change
+        assert shares_got == vault.balanceOf(trader)
+        #sanity checks
+        with open("contracts/vendor/IERC20.json") as f:
+            j = json.load(f)
+        factory = boa.loads_abi(json.dumps(j["abi"]), name="ERC20")
+        rsweth = factory.at(RSWETH)
+        assert rsweth.balanceOf(pendle_migrator) == 0, "vault shouldn't have anything lingering"
+        assert pt.balanceOf(pendle_migrator) == 0, "vault shouldn't have anything lingering"
+        logs = pendle_migrator.get_logs(include_child_logs=False)
+        assert len(logs) == 2
+        #First log should be swapped
+        assert "Swapped" in str(logs[0].event_type), "event mismatch"
+        assert logs[0].topics[0] == trader, "event mismatch"
+        assert logs[0].topics[1] == WEETH, "event mismatch"
+        assert logs[0].topics[2] == RSWETH, "event mismatch"
+
+
+        assert "PTMigrated" in str(logs[1].event_type), "event mismatch"
+        assert logs[1].topics[0] == trader, "event mismatch"
+        assert logs[1].topics[1] == RSWETH, "event mismatch"
+        assert logs[1].topics[2] == vault.address, "event mismatch"
+        assert logs[1].args[0] == shares_got, "event mismatch"
+        assert logs[1].args[1] == MARKET, "event mismatch"
+        assert logs[1].args[2] == 10**18, "event mismatch"
+
+
+        print("Original weETH PT spent: ", 1.0, " PT-weETH-25JUL2024")
+        print("WEETH got: ", logs[0].args[0] / 10**18, " weETH")
+        print("rswETH got(from uniswap): ", logs[0].args[1] / 10**18, " rswETH")
+        print("rswETH shares got: ", shares_got / 10**18, " ", vault.symbol())
+        print("shares to asset : ", vault.convertToAssets(shares_got) / 10**18, " rswETH")

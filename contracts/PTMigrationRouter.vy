@@ -120,6 +120,14 @@ event PTMigrated:
     market: address
     pt_amount: uint256
 
+event Swapped:
+    user: indexed(address)
+    asset_in: indexed(address)
+    asset_out: indexed(address)
+    amount_in: uint256
+    amount_out: uint256
+
+
 pendleRouter: immutable(address)
 uniSwapRouter: immutable(address)
 MAX_ADAPTERS : constant(uint256) = 5
@@ -208,6 +216,14 @@ def zap_in_univ3(
     UniSwapRouter(uniSwapRouter).exactInput(params)
 
     final_out: uint256 = ERC20(asset_out).balanceOf(self)
+
+    log Swapped(
+        msg.sender,
+        asset_in,
+        asset_out,
+        actual_out,
+        final_out
+    )
 
     ERC20(asset_out).approve(vault, final_out)
     shares_got: uint256 = AdapterVault(vault).deposit(final_out, msg.sender, min_shares, pregen_info)
