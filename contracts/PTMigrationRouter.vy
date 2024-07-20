@@ -178,6 +178,7 @@ def zap_in_univ3(
     minTokenOut: uint256,
     limit: LimitOrderData,
     uni_route: Bytes[4096],
+    deadline: uint256,
     asset_out: address,
     uni_minTokenOut: uint256,
     vault: address,
@@ -192,6 +193,7 @@ def zap_in_univ3(
     @param limit This could be populated from pendle's REST API for optimum trade fees.
     @param asset_out The asset the target PT wraps = same as asset the vault uses
     @param uni_route The route for uniswap trade
+    @param deadline The timestamp after which the swap reverts
     @param uni_minTokenOut Minimum amount of assets_out from uniswap
     @param vault The address of the AdapterVault we are depositing into
     @param min_shares Minmum number of shares that is acceptable. If 0 then apply MAX_SLIPPAGE_PERCENT % allowable slippage.
@@ -206,7 +208,7 @@ def zap_in_univ3(
     params: UniExactInputParams = empty(UniExactInputParams)
     params.path = uni_route
     params.recipient = self
-    params.deadline = block.timestamp
+    params.deadline = deadline
     params.amountIn = actual_out
     params.amountOutMinimum = uni_minTokenOut
 

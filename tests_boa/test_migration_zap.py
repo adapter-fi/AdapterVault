@@ -145,6 +145,7 @@ def test_pt_migration_eeth_zap_uni(setup_chain, trader, pendleRouter, pendle_mig
             0,
             limit,
             path,
+            boa.env.evm.patch.timestamp + 10,
             RSWETH,
             0,
             VAULT_RSWETH,

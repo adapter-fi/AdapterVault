@@ -259,6 +259,10 @@
         "type": "bytes"
       },
       {
+        "name": "deadline",
+        "type": "uint256"
+      },
+      {
         "name": "asset_out",
         "type": "address"
       },
@@ -460,6 +464,10 @@
       {
         "name": "uni_route",
         "type": "bytes"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256"
       },
       {
         "name": "asset_out",
