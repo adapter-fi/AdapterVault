@@ -16,7 +16,7 @@ PENDLE_MARKET="0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2" #Pendle: PT-stETH-26D
 STETH="0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"
 PENDLE_PT="0x7758896b6AC966BbABcf143eFA963030f17D3EdF"
 PENDLE_ORACLE="0x66a1096C6366b2529274dF4f5D8247827fe4CEA8"
-
+UNISWAP_ROUTER="0xE592427A0AEce92De3Edee1F18E0157C05861564"
 MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935
 
 
@@ -142,7 +142,7 @@ def pendle_factory(setup_chain, deployer, steth, pendleOracle):
 @pytest.fixture
 def pendle_migrator(setup_chain, deployer):
     with boa.env.prank(deployer):
-        pa = boa.load("contracts/PTMigrationRouter.vy", PENDLE_ROUTER)
+        pa = boa.load("contracts/PTMigrationRouter.vy", PENDLE_ROUTER, UNISWAP_ROUTER)
     return pa
 
 
@@ -320,3 +320,4 @@ def test_pt_migration(setup_chain, pendle_factory, deployer, steth, trader, vaul
         print("trader PT lost: ", pt_bal - pt.balanceOf(trader) )
         print("Vault PT gained: ", pt.balanceOf(vault) - pt_bal_vault )
         print("trader vault asset gained: ", vault.convertToAssets( vault.balanceOf(trader)) )
+
