@@ -7,6 +7,7 @@ PENDLE_ROUTER="0x00000000005BBB0EF59571E58418F9a4357b68A0"
 NOTHING="0x0000000000000000000000000000000000000000"
 PENDLE_ROUTER_STATIC="0x263833d47eA3fA4a30f269323aba6a107f9eB14C"
 PENDLE_ORACLE="0x66a1096C6366b2529274dF4f5D8247827fe4CEA8"
+UNISWAP_ROUTER="0xE592427A0AEce92De3Edee1F18E0157C05861564"
 
 
 #---- contracts deployed ----
@@ -15,7 +16,7 @@ ADAPTERVAULT_BLUEPRINT      = "0x8ccE1007C90E648BD54Fa4d6b284Bb002F69dECd" #Upda
 FUNDS_ALLOCATOR             = "0x1904163120C9345c1b41C520481CC677768E944d" #Update here if deployed
 GOVERNANCE                  = "0xEdf4B1a86320a7b635F4a5E90044C928A16C781a" #Update here if deployed
 PENDLE_FACTORY              = "0xcd3FF638DB6C1266b312B567DDE687C26A3314e5" #Update here if deployed
-PT_MIGRATOR                 = "0x33376eE814558e305c6279C66117499757C6F92f"
+PT_MIGRATOR                 = "0x4b7B15299b06f7B87b41662Ae43f6d799cd89848"
 
 #------ vaults -----------
 VAULT_RSETH = "0x9A7b4dDA01F1580CD8e4E4849A3532C34a4C4081"
@@ -116,7 +117,7 @@ if "__main__" in __name__:
         print("estimated gas price is: ", gas_price/10**9, " gwei")
         print("estimated gas cost: ", 896928 * gas_price/10**18, " ETH")
         input("Going to deploy PTMigrationRouter (ctrl+c to abort, enter to continue)")
-        pa = boa.load("contracts/PTMigrationRouter.vy", PENDLE_ROUTER) #896928
+        pa = boa.load("contracts/PTMigrationRouter.vy", PENDLE_ROUTER, UNISWAP_ROUTER) #896928
         print(pa) 
         exit()
     else:
