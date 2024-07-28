@@ -98,10 +98,11 @@ balance_adapters_data = [
     },
 ]
 
-def test_allocate_balance_adapter(funds_alloc):
+def test_allocate_balance_adapter_tx(funds_alloc):
     adapter = BalanceAdapter.from_dict(balance_adapters_data[0])
     adapter_tuple = adapter.to_tuple()
-    result = funds_alloc.allocate_balance_adapter(100, adapter_tuple) 
+    # result = funds_alloc.internal._allocate_balance_adapter_tx(100, adapter_tuple) # This fails with boa now.
+    result = funds_alloc.allocate_balance_adapter_tx(100, adapter_tuple)
     adapter.target = 100 * adapter.ratio
     adapter.delta = adapter.target - adapter.current
     assert result == (adapter.to_tuple(), 0, False, False)

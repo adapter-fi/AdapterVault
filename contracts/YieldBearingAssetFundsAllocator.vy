@@ -98,7 +98,7 @@ NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(int256) = max_value(int256) - 42
 
 @internal
 @pure
-def _allocate_balance_adapter(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
+def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
     """
     Given a value per strategy ratio and an un-allocated BalanceAdapter, return the newly allocated BalanceAdapter
     constrained by min & max limits and also identify if this adapter should be blocked due to unexpected losses,
@@ -134,6 +134,6 @@ def _allocate_balance_adapter(_ratio_value : uint256, _balance_adapter : Balance
 
 @external
 @pure
-def allocate_balance_adapter(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
-    return self._allocate_balance_adapter(_ratio_value, _balance_adapter)
+def allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
+    return self._allocate_balance_adapter_tx(_ratio_value, _balance_adapter)
 
