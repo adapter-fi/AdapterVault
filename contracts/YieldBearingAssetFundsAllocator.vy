@@ -5,37 +5,37 @@
 @license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
 @author BiggestLab (https://biggestlab.io) Benjamin Scherrey
 
-Slippage is an insidious little parasite because attempts to optimize funds into the best mix of returns generally results in
-higher transaction quantities which gives more opportunity for the parasites to bite us! This makes optimizations generally
-counter productive when applied across multiple adapters inside a single transaction. This funds allocator model is designed
-to treat the strategy model as more of a direction than a destination and gradually approach an optimum strategy goals over
-multiple user transactions rather than each time.
+Slippage is an insidious little parasite because attempts to optimize funds into the best mix of
+returns generally results in higher transaction quantities which gives more opportunity for the
+parasites to bite us! This makes optimizations generally counter productive when applied across
+multiple adapters inside a single transaction. This funds allocator model is designed to treat the
+strategy model as more of a direction than a destination and gradually approach an optimum strategy
+goals over multiple user transactions rather than each time.
 
-Now, for any deposit, we will only interact with a single adapter - that being the one that is most out of balance compared
-to the ideal distribution of funds according to the current active strategy ratios. However, since deposits are possibly
-restricted due to Adapter.maxDeposit() limits, there could be situations where the full amount of the deposit is not able to
-be deposited into the targeted adapter. Should that happen, the default condition is the remaining funds will sit in the 4626
-Vault buffer and be unallocated. This is not desirable because the next depositor will not only be moving their funds into an
-adapter but also the left over funds as well which potentially exposes the tx to additional slippage increasing the risk of
-their tx reverting due to slippage violations.
+Now, for any deposit, we will only interact with a single adapter - that being the one that is most
+out of balance compared to the ideal distribution of funds according to the current active strategy
+ratios. However, since deposits are possibly restricted due to Adapter.maxDeposit() limits, there
+could be situations where the full amount of the deposit is not able to be deposited into the
+targeted adapter. Should that happen, the default condition is the remaining funds will sit in the
+4626 Vault buffer and be unallocated. This is not desirable because the next depositor will not
+only be moving their funds into an adapter but also the left over funds as well which potentially
+exposes the tx to additional slippage increasing the risk of their tx reverting due to slippage 
+violations.
 
-To counteract the above exception condition we are introducing a "neutral adapter". This is an adapter that simply holds the
-assets and does nothing to swap them into any other asset. It just holds them as a buffer and takes the place of the main 
-4626 vault buffer. This adapter can be identified as the special "neutral adapter" because a call to it's Adapter.maxDesposit()
-function will always return convert(max_value(int256) - 42), uint256) as a special indicator that this adapter is not going to
-have any slippage or fees so is safe to hold "leftovers". All future withdraws will always try to pull from the "neutral adapter"
-first. And even if the "neutral adapter" has a 0 strategy ratio, leftovers will still get deposited there. If a "neutral adapter"
+To counteract the above exception condition we are introducing a "neutral adapter". This is an
+adapter that simply holds the assets and does nothing to swap them into any other asset. It just
+holds them as a buffer and takes the place of the main 4626 vault buffer. This adapter can be
+identified as the special "neutral adapter" because a call to it's Adapter.maxDesposit() function
+will always return convert(max_value(int256) - 42), uint256) as a special indicator that this
+adapter is not going to have any slippage or fees so is safe to hold "leftovers". All future
+withdraws will always try to pull from the "neutral adapter" first. And even if the "neutral
+adapter" has a 0 strategy ratio, leftovers will still get deposited there. If a "neutral adapter"
 has not been deployed then the default original behavior of using the 4626 vault buffer will resume.
 
-Finally - to support the 4626 vault's full balanceAdapters capabilities, we will check to see if tx.origin == Vault(msg.sender).owner()
-which means the contract owner has directly invoked this and we will produce multiple txs to get the Vault fully aligned to the
-current strategy.
-
+Finally - to support the 4626 vault's full balanceAdapters capabilities, we will check for some
+indication (TBD) that will let us know the contract owner has directly invoked this thus producing
+multiple txs to get the Vault fully aligned to the current strategy.
 """
-
-#interface AdapterVault:
-#    pass
-
 
 ##
 ## Must match AdapterVault.vy
@@ -44,7 +44,6 @@ current strategy.
 MAX_ADAPTERS : constant(uint256) = 5 
 
 ADAPTER_BREAKS_LOSS_POINT : constant(decimal) = 0.05
-
 
 # This structure must match definition in AdapterVault.vy
 struct BalanceTX:
@@ -94,7 +93,9 @@ def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min
 def _is_full_rebalance() -> bool:
     return False
 
+
 NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(int256) = max_value(int256) - 42
+
 
 @internal
 @pure
@@ -109,6 +110,10 @@ def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : Bala
     # Have funds been lost?
     should_we_block_adapter : bool = False
     if _balance_adapter.current < _balance_adapter.last_value:
+        # There's an unexpected loss of value. Let's try to empty this adapter and stop
+        # further allocations to it by setting the ratio to 0 going forward.
+        # This will not necessarily result in any "leftovers" unless withdrawing the full
+        # balance of the adapter is limited by max_withdraw limits below.
         _balance_adapter.ratio = 0
         should_we_block_adapter = True
 
