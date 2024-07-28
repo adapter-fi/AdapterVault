@@ -94,3 +94,19 @@ def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min
 def _is_full_rebalance() -> bool:
     return False
 
+
+@internal
+@pure
+def _allocate_balance_adapter(_ratio_value : int256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool):
+    """
+    Given a value per strategy ratio and an un-allocated BalanceAdapter, return the newly allocated BalanceAdapter
+    constrained by min & max limits and also identify if this adapter should be blocked due to unexpected losses.
+    """
+    return _balance_adapter, 0, False
+
+
+@external
+@pure
+def allocate_balance_adapter(_ratio_value : int256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool):
+    return _allocate_balance_adapter(_ratio_value, _balance_adapter)
+
