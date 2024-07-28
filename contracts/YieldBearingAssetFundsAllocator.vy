@@ -33,8 +33,8 @@ current strategy.
 
 """
 
-interface AdapterVault:
-    pass
+#interface AdapterVault:
+#    pass
 
 
 ##
