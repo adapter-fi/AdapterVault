@@ -33,6 +33,10 @@ current strategy.
 
 """
 
+interface AdapterVault:
+    pass
+
+
 ##
 ## Must match AdapterVault.vy
 ##
@@ -85,4 +89,8 @@ def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min
     return adapter_txs, blocked_adapters
 
 
-    
+@internal
+@view
+def _is_full_rebalance() -> bool:
+    return False
+
