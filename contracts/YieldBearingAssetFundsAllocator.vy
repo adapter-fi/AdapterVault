@@ -125,6 +125,8 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
         if blocked:
             assert _adapter_states[pos].delta <= 0, "Blocked adapter flaw trying to deposit!" # This can't happen.
             blocked_adapters.append(_adapter_states[pos])
+            # TODO FUTURE - if we're doing a deposit now would be the time to re-calculate the remaining_funds_to_allocate 
+            #               and ratio_value in order to immediately re-invest these liquidated funds into other adapters.
 
         # Is this a key adapter? If so it's not eligible to be max deposit or min withdraw adapter unless no other qualifies.
         if neutral:
@@ -232,10 +234,24 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
         if shortfall > 0:
             assert False, "HAPPY CASE NOT FOUND!"
 
+    result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
+    result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
 
+    tx_pos : uint256 = 0
+    tx_blocked : uint256 = 0
+    for rtx in blocked_adapters:
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #1!"
+        result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
+        result_blocked[tx_blocked] = rtx.adapter
+        tx_pos += 1
+        tx_blocked += 1
 
+    for rtx in adapter_txs:
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #2!"
+        result_txs[tx_pos] = rtx
+        tx_pos += 1
 
-    return empty(BalanceTX[MAX_ADAPTERS]), empty(address[MAX_ADAPTERS])
+    return result_txs, result_blocked
 
 
 @external
@@ -268,6 +284,7 @@ def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : Bala
     delta : int256 = convert(target, int256) - convert(_balance_adapter.current, int256) 
 
     leftovers : int256 = 0
+
     # Limit deposits to max_deposit
     if delta > _balance_adapter.max_deposit:
         leftovers = delta - _balance_adapter.max_deposit
