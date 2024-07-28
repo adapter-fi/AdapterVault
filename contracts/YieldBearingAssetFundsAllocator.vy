@@ -154,16 +154,18 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             # TODO: update existing allocation accounting for no transfer.
             pass
 
-    # If there's a neutral adapter but no max deposit or min withdraw then give the open spots to the neutral adapter.
-    if neutral_adapter_pos != MAX_ADAPTERS:
+    # Pretty sure this is a bad idea because we're likely to do double accounting for neutral adapter.
+    # We explicitly prioritize neutral adapter later so this is unnecessary. 
+    # # If there's a neutral adapter but no max deposit or min withdraw then give the open spots to the neutral adapter.
+    # if neutral_adapter_pos != MAX_ADAPTERS:
 
-        # This should be impossible but what if the neutral adapter is blocked?
-        # BDM TODO : Check this later against a list of addresses! assert _adapter_states[neutral_adapter_pos].adapter not in blocked_adapters, "ERROR - Neutral adapter blocked!"
+    #     # This should be impossible but what if the neutral adapter is blocked?
+    #     # BDM TODO : Check this later against a list of addresses! assert _adapter_states[neutral_adapter_pos].adapter not in blocked_adapters, "ERROR - Neutral adapter blocked!"
 
-        if max_delta_deposit_pos == MAX_ADAPTERS:
-            max_delta_deposit_pos = neutral_adapter_pos
-        if min_delta_withdraw_pos == MAX_ADAPTERS:
-            min_delta_withdraw_pos = neutral_adapter_pos
+    #     if max_delta_deposit_pos == MAX_ADAPTERS:
+    #         max_delta_deposit_pos = neutral_adapter_pos
+    #     if min_delta_withdraw_pos == MAX_ADAPTERS:
+    #         min_delta_withdraw_pos = neutral_adapter_pos
 
     # Are we dealing with a deposit?
     if _target_asset_balance == 0 and _vault_balance > 0:
