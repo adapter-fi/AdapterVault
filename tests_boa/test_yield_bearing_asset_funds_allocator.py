@@ -104,4 +104,4 @@ def test_allocate_balance_adapter(funds_alloc):
     result = funds_alloc.allocate_balance_adapter(100, adapter_tuple) 
     adapter.target = 100 * adapter.ratio
     adapter.delta = adapter.target - adapter.current
-    assert result == (adapter.to_tuple(), 0, False)
+    assert result == (adapter.to_tuple(), 0, False, False)
