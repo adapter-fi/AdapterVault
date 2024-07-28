@@ -101,5 +101,7 @@ balance_adapters_data = [
 def test_allocate_balance_adapter(funds_alloc):
     adapter = BalanceAdapter.from_dict(balance_adapters_data[0])
     adapter_tuple = adapter.to_tuple()
-    result = funds_alloc.allocate_balance_adapter(0, adapter_tuple) 
-    assert result == (adapter_tuple, 0, False)
+    result = funds_alloc.allocate_balance_adapter(100, adapter_tuple) 
+    adapter.target = 100 * adapter.ratio
+    adapter.delta = adapter.target - adapter.current
+    assert result == (adapter.to_tuple(), 0, False)

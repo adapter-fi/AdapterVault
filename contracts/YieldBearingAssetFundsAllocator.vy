@@ -97,16 +97,39 @@ def _is_full_rebalance() -> bool:
 
 @internal
 @pure
-def _allocate_balance_adapter(_ratio_value : int256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool):
+def _allocate_balance_adapter(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool):
     """
     Given a value per strategy ratio and an un-allocated BalanceAdapter, return the newly allocated BalanceAdapter
     constrained by min & max limits and also identify if this adapter should be blocked due to unexpected losses.
     """
-    return _balance_adapter, 0, False
+    # Have funds been lost?
+    block_adapter : bool = False
+    if _balance_adapter.current < _balance_adapter.last_value:
+        _balance_adapter.ratio = 0
+        block_adapter = True
+
+    target : uint256 = _ratio_value * _balance_adapter.ratio
+    delta : int256 = convert(_balance_adapter.current, int256) - convert(target, int256)
+
+    leftovers : int256 = 0
+    # Limit deposits to max_deposit
+    if delta > _balance_adapter.max_deposit:
+        leftovers = _balance_adapter.max_deposit - delta
+        delta = _balance_adapter.max_deposit
+
+    # Limit withdraws to max_withdraw    
+    elif delta < _balance_adapter.max_withdraw:
+        leftovers = delta - _balance_adapter.max_withdraw
+        delta = _balance_adapter.max_withdraw
+
+    _balance_adapter.delta = delta
+    _balance_adapter.target = target  # We are not adjusting the optimium target for now.
+
+    return _balance_adapter, leftovers, block_adapter
 
 
 @external
 @pure
-def allocate_balance_adapter(_ratio_value : int256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool):
+def allocate_balance_adapter(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool):
     return self._allocate_balance_adapter(_ratio_value, _balance_adapter)
 
