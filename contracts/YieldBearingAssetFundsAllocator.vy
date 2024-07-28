@@ -119,7 +119,7 @@ def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : Bala
         should_we_block_adapter = True
 
     target : uint256 = _ratio_value * _balance_adapter.ratio
-    delta : int256 = convert(_balance_adapter.current, int256) - convert(target, int256)
+    delta : int256 = convert(target, int256) - convert(_balance_adapter.current, int256) 
 
     leftovers : int256 = 0
     # Limit deposits to max_deposit

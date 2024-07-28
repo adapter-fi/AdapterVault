@@ -94,8 +94,10 @@ class BalanceAdapter:
 balance_adapters_data = [
     ({  'adapter': Address('0x0000000000000000000000000000000000000001'), 'current': 1000, 'last_value': 900, 'ratio': 10 },
         {'exception': None, 'ratio_value': 100, 'target':1000, 'delta':0, 'leftovers':0, 'block': False, 'neutral': False}),
-    #({  'adapter': Address('0x0000000000000000000000000000000000000002'), 'current': 1500, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 20 },
-    #    {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':500, 'leftovers':0, 'block': False, 'neutral': False}),
+    ({  'adapter': Address('0x0000000000000000000000000000000000000002'), 'current': 1500, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 20 },
+        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':500, 'leftovers':0, 'block': False, 'neutral': False}),
+    ({  'adapter': Address('0x0000000000000000000000000000000000000003'), 'current': 2000, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 15 },
+        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-500, 'leftovers':0, 'block': False, 'neutral': False}),
 ]
 
 def test_allocate_balance_adapter_tx(funds_alloc):
@@ -118,7 +120,12 @@ def test_allocate_balance_adapter_tx(funds_alloc):
         print("type(adapter_data[0]['adapter']) = %s" % type(adapter_data[0]['adapter']))        
         print("adapter.adapter == adapter_data[0]['adapter'] = %s" % adapter.adapter == adapter_data[0]['adapter'])
         assert Address(adapter.adapter[0]) == adapter_data[0]['adapter'] # BDM WTF?!?!? Why is adapter.adapter becoming a tuple????
-        assert adapter.current == adapter_data[0]['current']
-        adapter.target = target_result['target'] # 100 * adapter.ratio
-        adapter.delta = target_result['delta'] # adapter.target - adapter.current
-        #assert result == (adapter.to_tuple(), target_result['leftovers'], target_result['block'], target_result['neutral'])
+        assert adapter.current[0] == adapter_data[0]['current']
+        assert adapter.last_value[0] == adapter_data[0]['last_value']
+        assert adapter.ratio[0] == adapter_data[0]['ratio']
+        assert adapter.target[0] == adapter_data[1]['target']
+        assert adapter.delta == adapter_data[1]['delta']
+        assert leftovers == adapter_data[1]['leftovers']
+        assert block_adapter == adapter_data[1]['block']
+        assert neutral_adapter == adapter_data[1]['neutral']
+
