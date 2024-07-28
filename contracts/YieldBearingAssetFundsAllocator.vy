@@ -71,8 +71,7 @@ def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_
 
 @internal
 @pure
-def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
-    # _BDM TODO : max_txs is ignored for now.    
+def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):    
     adapter_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     blocked_adapters : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
     adapter_states: BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
@@ -95,17 +94,38 @@ def _is_full_rebalance() -> bool:
     return False
 
 
+@internal
+@pure
+def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
+    adapter_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
+    blocked_adapters : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
+
+    # Offsets in _adapter_states for key adapters
+    max_delta_deposit_pos : int256 = max_value(int256)
+    min_delta_withdraw_pos : int256 = max_value(int256)
+    neutral_adapter_pos : int256 = max_value(int256)
+
+    pos : uint256 = 0
+    for adapter in _adapter_states:
+        pass
+
+    return adapter_txs, blocked_adapters
+
+
+@external
+@pure
+def generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
+    """
+    """
+    return self._generate_balance_txs(_vault_balance, _target_asset_balance, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+ 
+
 NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(int256) = max_value(int256) - 42
 
 
 @internal
 @pure
 def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
-    """
-    Given a value per strategy ratio and an un-allocated BalanceAdapter, return the newly allocated BalanceAdapter
-    constrained by min & max limits and also identify if this adapter should be blocked due to unexpected losses,
-    plus identify whether or not this is our "neutral adapter".
-    """
     is_neutral_adapter : bool = _balance_adapter.max_deposit == NEUTRAL_ADAPTER_MAX_DEPOSIT
 
     # Have funds been lost?
@@ -141,5 +161,10 @@ def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : Bala
 @external
 @pure
 def allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
+    """
+    Given a value per strategy ratio and an un-allocated BalanceAdapter, return the newly allocated BalanceAdapter
+    constrained by min & max limits and also identify if this adapter should be blocked due to unexpected losses,
+    plus identify whether or not this is our "neutral adapter".
+    """    
     return self._allocate_balance_adapter_tx(_ratio_value, _balance_adapter)
 
