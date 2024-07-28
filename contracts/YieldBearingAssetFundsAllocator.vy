@@ -98,18 +98,40 @@ def _is_full_rebalance() -> bool:
 @pure
 def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
     adapter_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
-    blocked_adapters : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
+    blocked_adapters : DynArray[address,MAX_ADAPTERS] = empty(DynArray[address,MAX_ADAPTERS])
 
     # Offsets in _adapter_states for key adapters
-    max_delta_deposit_pos : int256 = max_value(int256)
-    min_delta_withdraw_pos : int256 = max_value(int256)
-    neutral_adapter_pos : int256 = max_value(int256)
+    max_delta_deposit_pos : uint256 = MAX_ADAPTERS
+    min_delta_withdraw_pos : uint256 = MAX_ADAPTERS
+    neutral_adapter_pos : uint256 = MAX_ADAPTERS
 
-    pos : uint256 = 0
-    for adapter in _adapter_states:
-        pass
+    remaining_funds_to_allocate = _total_assets - _target_asset_balance
+    ratio_value : uint256 = remaining_funds_to_allocate / _total_ratios
 
-    return adapter_txs, blocked_adapters
+    for pos in range(MAX_ADAPTERS):
+        if _adapter_states[pos].adapter == empty(address):
+            break
+        leftovers : int256 = 0
+        blocked : bool = False        
+        neutral : bool = False
+
+        _adapter_states[pos], leftovers, blocked, neutral = self._allocate_balance_adapter_tx(ratio_value, _adapter_states[pos])
+
+        # Is this a blocked adapter now?
+        if blocked:
+            blocked_adapters.append(_adapter_states[pos].adapter)
+
+        # Is this a key adapter?
+        if neutral:
+            neutral_adapter_pos = pos
+        elif _adapter_states[pos].delta > 0 and \
+            ((max_delta_deposit_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta > _adapter_states[max_delta_deposit_pos].delta)):
+            max_delta_deposit_pos = pos
+        elif _adapter_states[pos].delta < 0 and \
+            ((min_delta_withdraw_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta < _adapter_states[min_delta_withdraw_pos].delta)):
+            min_delta_withdraw_pos = pos
+
+    return adapter_txs, empty(address[MAX_ADAPTERS])
 
 
 @external
