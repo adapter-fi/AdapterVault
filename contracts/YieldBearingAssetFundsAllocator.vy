@@ -105,7 +105,7 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
     min_delta_withdraw_pos : uint256 = MAX_ADAPTERS
     neutral_adapter_pos : uint256 = MAX_ADAPTERS
 
-    remaining_funds_to_allocate = _total_assets - _target_asset_balance
+    remaining_funds_to_allocate : uint256 = _total_assets - _target_asset_balance
     ratio_value : uint256 = remaining_funds_to_allocate / _total_ratios
 
     for pos in range(MAX_ADAPTERS):
