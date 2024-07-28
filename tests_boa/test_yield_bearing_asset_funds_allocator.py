@@ -93,11 +93,19 @@ class BalanceAdapter:
 
 balance_adapters_data = [
     ({  'adapter': Address('0x0000000000000000000000000000000000000001'), 'current': 1000, 'last_value': 900, 'ratio': 10 },
-        {'exception': None, 'ratio_value': 100, 'target':1000, 'delta':0, 'leftovers':0, 'block': False, 'neutral': False}),
+        {'exception': None, 'ratio_value': 100, 'target':1000, 'delta':0, 'leftovers':0, 'block': False, 'neutral': False}), # No transfer
     ({  'adapter': Address('0x0000000000000000000000000000000000000002'), 'current': 1500, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 20 },
-        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':500, 'leftovers':0, 'block': False, 'neutral': False}),
+        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':500, 'leftovers':0, 'block': False, 'neutral': False}), # Deposit 500 normally
     ({  'adapter': Address('0x0000000000000000000000000000000000000003'), 'current': 2000, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 15 },
-        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-500, 'leftovers':0, 'block': False, 'neutral': False}),
+        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-500, 'leftovers':0, 'block': False, 'neutral': False}), # Withdraw 500 normally
+    ({  'adapter': Address('0x0000000000000000000000000000000000000005'), 'current': 1500, 'last_value': 1500, 'max_deposit': 300, 'ratio': 20 },
+        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':300, 'leftovers':200, 'block': False, 'neutral': False}), # Deposit 300 limited by max_deposit
+    ({  'adapter': Address('0x0000000000000000000000000000000000000005'), 'current': 2000, 'last_value': 1500, 'max_withdraw': -300, 'ratio': 15 },
+        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-300, 'leftovers':-200, 'block': False, 'neutral': False}), # Withdraw 300 limited by max_withdraw
+    ({  'adapter': Address('0x0000000000000000000000000000000000000006'), 'current': 1000, 'last_value': 900, 'max_deposit': neutral_max_deposit, 'ratio': 10 },
+        {'exception': None, 'ratio_value': 100, 'target':1000, 'delta':0, 'leftovers':0, 'block': False, 'neutral': True}), # Neutral adapter, No transfer
+    ({  'adapter': Address('0x0000000000000000000000000000000000000007'), 'current': 1000, 'last_value': 1500, 'ratio': 10 },
+        {'exception': None, 'ratio_value': 100, 'target':0, 'delta':-1000, 'leftovers':0, 'block': True, 'neutral': False, 'new_ratio': 0}), # Loss! Withdraw 1000.
 ]
 
 def test_allocate_balance_adapter_tx(funds_alloc):
@@ -122,7 +130,7 @@ def test_allocate_balance_adapter_tx(funds_alloc):
         assert Address(adapter.adapter[0]) == adapter_data[0]['adapter'] # BDM WTF?!?!? Why is adapter.adapter becoming a tuple????
         assert adapter.current[0] == adapter_data[0]['current']
         assert adapter.last_value[0] == adapter_data[0]['last_value']
-        assert adapter.ratio[0] == adapter_data[0]['ratio']
+        assert adapter.ratio[0] == adapter_data[1].get('new_ratio', adapter_data[0]['ratio'])
         assert adapter.target[0] == adapter_data[1]['target']
         assert adapter.delta == adapter_data[1]['delta']
         assert leftovers == adapter_data[1]['leftovers']

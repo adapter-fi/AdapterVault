@@ -124,7 +124,7 @@ def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : Bala
     leftovers : int256 = 0
     # Limit deposits to max_deposit
     if delta > _balance_adapter.max_deposit:
-        leftovers = _balance_adapter.max_deposit - delta
+        leftovers = delta - _balance_adapter.max_deposit
         delta = _balance_adapter.max_deposit
 
     # Limit withdraws to max_withdraw    
