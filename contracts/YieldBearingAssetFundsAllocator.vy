@@ -108,5 +108,5 @@ def _allocate_balance_adapter(_ratio_value : int256, _balance_adapter : BalanceA
 @external
 @pure
 def allocate_balance_adapter(_ratio_value : int256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool):
-    return _allocate_balance_adapter(_ratio_value, _balance_adapter)
+    return self._allocate_balance_adapter(_ratio_value, _balance_adapter)
 
