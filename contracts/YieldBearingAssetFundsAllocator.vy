@@ -121,15 +121,43 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
         if blocked:
             blocked_adapters.append(_adapter_states[pos].adapter)
 
-        # Is this a key adapter?
+        # Is this a key adapter? If so it's not eligible to be max deposit or min withdraw adapter unless no other qualifies.
         if neutral:
             neutral_adapter_pos = pos
-        elif _adapter_states[pos].delta > 0 and \
-            ((max_delta_deposit_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta > _adapter_states[max_delta_deposit_pos].delta)):
-            max_delta_deposit_pos = pos
-        elif _adapter_states[pos].delta < 0 and \
-            ((min_delta_withdraw_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta < _adapter_states[min_delta_withdraw_pos].delta)):
-            min_delta_withdraw_pos = pos
+            # TODO : update existing allocation & deposit/withdraw accounting.
+        
+        # Is this a deposit?
+        elif _adapter_states[pos].delta > 0:
+            # TODO: update existing allocation & deposit accounting.
+
+            # Is this the largest deposit adapter out of balance?    
+            if ((max_delta_deposit_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta > _adapter_states[max_delta_deposit_pos].delta)):
+                max_delta_deposit_pos = pos
+
+        # Is this a withdraw?
+        elif _adapter_states[pos].delta < 0:
+            # TODO: update existing allocation & withdraw accounting.
+
+            # Is this the largest withdraw adapter out of balance?
+            if ((min_delta_withdraw_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta < _adapter_states[min_delta_withdraw_pos].delta)):
+                min_delta_withdraw_pos = pos
+
+        # Otherwise there's no tx for this adapter.
+        else:
+            # TODO: update existing allocation accounting for no transfer.
+            pass
+
+    # If there's a neutral adapter but no max deposit or min withdraw then give the open spots to the neutral adapter.
+    if neutral_adapter_pos != MAX_ADAPTERS:
+        if max_delta_deposit_pos == MAX_ADAPTERS:
+            max_delta_deposit_pos = neutral_adapter_pos
+        if min_delta_withdraw_pos == MAX_ADAPTERS:
+            min_delta_withdraw_pos = neutral_adapter_pos
+
+    # TODO: If _withdraw_only is True then ignore deposit txs.
+
+    # TODO: if _is_full_rebalance() is False then do the one big tx.
+    # TODO: else produce all the txs to get us into perfect balance.
 
     return adapter_txs, empty(address[MAX_ADAPTERS])
 
