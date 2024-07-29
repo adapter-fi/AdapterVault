@@ -5,6 +5,7 @@ from boa.util.abi import Address as Address
 from decimal import Decimal
 from dataclasses import dataclass, field
 from itertools import chain
+from typing import List, Dict
 
 # ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 MAX_ADAPTERS = 5 # Must match the value from AdapterVault.vy
@@ -66,7 +67,7 @@ class BalanceAdapter:
     delta: int = field(default=0)
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: Dict[str, int]) -> "BalanceAdapter":
         return cls(**data)
 
     def to_tuple(self):
@@ -147,23 +148,33 @@ def test_allocate_balance_adapter_tx(funds_alloc):
         counter += 1
 
 
-def _total_assets(buffer, adapter_states):
+def _total_assets(buffer: int, adapter_states: List[BalanceAdapter] = []) -> int:
     result = buffer
     for adapter in adapter_states:
         result += adapter.current
     return result
 
-def _total_ratios(adapter_states):
+def _total_ratios(adapter_states: List[BalanceAdapter] = []) -> int:
     result = 0
     for adapter in adapter_states:
         result += adapter.ratio
+    return result
 
-def _adapter_states(offset_list):
+def _adapter_states(offset_list: List[int] = []) -> List[BalanceAdapter]:
     states = [BalanceAdapter.from_dict(balance_adapters_data[x][0]) for x in offset_list]
     return [x for x in chain(states, [BalanceAdapter()] * MAX_ADAPTERS)][:MAX_ADAPTERS]
 
-def _txs(tx_list):
-    return [x for x in chain(tx_list, [(0, Address('0x0000000000000000000000000000000000000000'))] * MAX_ADAPTERS )][:MAX_ADAPTERS]
+def _txs(tx_list: List[tuple] = []) -> List[tuple]:
+    """
+    tx_list should be [(delta, offset into balance_adapters_data),]
+    """
+    txs = [(x[0], BalanceAdapter.from_dict(balance_adapters_data[x[1]][0]).adapter) for x in tx_list]
+    return [x for x in chain(txs, [(0, "0x0000000000000000000000000000000000000000")] * MAX_ADAPTERS)][:MAX_ADAPTERS]
+
+def _blocked_adapters(adapter_list: List[int] = []) -> List[str]:
+    adapters = [BalanceAdapter.from_dict(balance_adapters_data[x][0]).adapter for x in adapter_list]
+    return [x for x in chain(adapters, ["0x0000000000000000000000000000000000000000"] * MAX_ADAPTERS)][:MAX_ADAPTERS]
+
 
 def test_generate_balance_txs(funds_alloc):
     adapter_states = _adapter_states([0,5])
@@ -178,9 +189,11 @@ def test_generate_balance_txs(funds_alloc):
     print("total_assets = %s" % total_assets)
     print("total_ratios = %s" % total_ratios)
 
-    good_result = _txs([(1000, Address('0x0000000000000000000000000000000000000001'))])
-    txs, blocked_addresses = funds_alloc.generate_balance_txs(1000, 0, 0, total_assets, 10, adapter_tuples, False)
+    good_result = _txs([(1000, 0)])
+    blocked_result = _blocked_adapters()
+    txs, blocked_addresses = funds_alloc.generate_balance_txs(1000, 0, 0, total_assets, total_ratios, adapter_tuples, False)
 
     print("txs = %s" % txs)
     print("blocked_addresses = %s" % blocked_addresses)
     assert txs == good_result
+    assert blocked_addresses == blocked_result
