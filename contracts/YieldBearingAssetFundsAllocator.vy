@@ -127,7 +127,6 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             assert _adapter_states[pos].delta <= 0, "Blocked adapter flaw trying to deposit!" # This can't happen.
             blocked_adapters.append(_adapter_states[pos])
 
-            assert False, "Blocked Adapter handling!" # BDM
             # TODO FUTURE - if we're doing a deposit now would be the time to re-calculate the remaining_funds_to_allocate 
             #               and ratio_value in order to immediately re-invest these liquidated funds into other adapters.
 
@@ -231,13 +230,53 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
                                                adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
                 shortfall -= _adapter_states[min_delta_withdraw_pos].current                
 
-        # TODO - if we still have a shortfall then we have to walk across the remaining adapters (ignoring 
-        #        min_delta_withdraw_pos & neutral_adapter_pos) until we come up with enough funds to fulfill the withdraw.
+        # If we still have a shortfall then we have to walk across the remaining adapters (ignoring 
+        # min_delta_withdraw_pos & neutral_adapter_pos) until we come up with enough funds to fulfill the withdraw.
         if shortfall > 0:
-            assert False, "HAPPY CASE NOT FOUND!" # BDM
+            # Walk over remaining adapters with balances prioritizing adapters looking to withdraw first.
+            used : DynArray[address,MAX_ADAPTERS] = empty(DynArray[address,MAX_ADAPTERS]) # Addresses of adapters we've already depleted.
+            if min_delta_withdraw_pos != MAX_ADAPTERS: used.append(_adapter_states[min_delta_withdraw_pos].adapter) # Already depleted this one.
+            if neutral_adapter_pos != MAX_ADAPTERS: used.append(_adapter_states[neutral_adapter_pos].adapter) # Already depleted this one.
+            for blocked_tx in blocked_adapters: # We're already emptying the blocked adapters.
+                used.append(blocked_tx.adapter)
 
+            # Take funds from remaining adapters looking to withdraw to balance first.
+            for i in range(MAX_ADAPTERS):
+                if shortfall == 0: break
+                if _adapter_states[i].adapter in used: continue # Already depleted this adapter.
+                if _adapter_states[i].delta < 0:
+                    used.append(_adapter_states[i].adapter) # Mark used
+                    if convert(shortfall, int256) > max(_adapter_states[i].max_withdraw, _adapter_states[i].max_withdraw):
+                        # Got it all!
+                        adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall = 0
+                    else:
+                        # Got some...
+                        adapter_txs.append( BalanceTX({qty: convert(_adapter_states[i].current, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall -= _adapter_states[i].current 
+
+            # Take funds from remaining adapters having any remaining balance.
+            for i in range(MAX_ADAPTERS):
+                if shortfall == 0: break
+                if _adapter_states[i].adapter in used: continue # Already depleted this adapter.
+                if _adapter_states[i].current > 0:
+                    used.append(_adapter_states[i].adapter) # Mark used
+                    if convert(shortfall, int256) > max(_adapter_states[i].max_withdraw, _adapter_states[i].max_withdraw):
+                        # Got it all!
+                        adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall = 0
+                    else:
+                        # Got some...
+                        adapter_txs.append( BalanceTX({qty: convert(_adapter_states[i].current, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall -= _adapter_states[i].current             
+
+            assert shortfall == 0, "ERROR - inadequate funds to fulfill withdraw!"
     else:
-        # This is withdraw satisfied by the vault buffer.
+        # This withdraw is satisfied by the vault buffer. Nothing we need to do.
         pass
 
     result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
