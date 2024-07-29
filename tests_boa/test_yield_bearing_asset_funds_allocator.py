@@ -162,6 +162,9 @@ def _adapter_states(offset_list):
     states = [BalanceAdapter.from_dict(balance_adapters_data[x][0]) for x in offset_list]
     return [x for x in chain(states, [BalanceAdapter()] * MAX_ADAPTERS)][:MAX_ADAPTERS]
 
+def _txs(tx_list):
+    return [x for x in chain(tx_list, [(0, Address('0x0000000000000000000000000000000000000000'))] * MAX_ADAPTERS )][:MAX_ADAPTERS]
+
 def test_generate_balance_txs(funds_alloc):
     adapter_states = _adapter_states([0,5])
     print("adapter_states = %s" % adapter_states)
@@ -175,9 +178,9 @@ def test_generate_balance_txs(funds_alloc):
     print("total_assets = %s" % total_assets)
     print("total_ratios = %s" % total_ratios)
 
-
+    good_result = _txs([(1000, Address('0x0000000000000000000000000000000000000001'))])
     txs, blocked_addresses = funds_alloc.generate_balance_txs(1000, 0, 0, total_assets, 10, adapter_tuples, False)
 
     print("txs = %s" % txs)
     print("blocked_addresses = %s" % blocked_addresses)
-    assert False
+    assert txs == good_result

@@ -174,10 +174,12 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
         if max_delta_deposit_pos != MAX_ADAPTERS:  
 
             # Do we need to redirect an overage?
-            if _adapter_states[max_delta_deposit_pos].max_deposit > convert(_vault_balance, int256):
+            if _adapter_states[max_delta_deposit_pos].max_deposit < convert(_vault_balance, int256):
                 _adapter_states[max_delta_deposit_pos].delta = _adapter_states[max_delta_deposit_pos].max_deposit
                 adapter_txs.append( BalanceTX({qty: _adapter_states[max_delta_deposit_pos].max_deposit, 
                                                adapter: _adapter_states[max_delta_deposit_pos].adapter}) ) 
+
+                assert False, "Got here!" # BDM
 
                 # # Do we have a neutral adapter to take the rest?
                 if neutral_adapter_pos != MAX_ADAPTERS:
@@ -188,11 +190,12 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             else:
                 adapter_txs.append( BalanceTX({qty: convert(_vault_balance, int256), 
                                                adapter: _adapter_states[max_delta_deposit_pos].adapter}) ) 
+                #assert False, "Got it all!" # BDM
 
         # Otherwise we got no where to send it so the funds are just gonna stay in the vault buffer.
         else:
-            assert False, "Not a deposit!"
-            
+            assert False, "Not a deposit!" # BDM
+
     # Is it a withdraw and is our buffer short of funds?
     elif _target_asset_balance > 0 and _vault_balance < _target_asset_balance:
 
@@ -237,6 +240,9 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
         #        min_delta_withdraw_pos & neutral_adapter_pos) until we come up with enough funds to fulfill the withdraw.
         if shortfall > 0:
             assert False, "HAPPY CASE NOT FOUND!"
+
+    else:
+        assert False, "No transaction!" # BDM
 
     result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
