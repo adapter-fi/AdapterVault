@@ -103,7 +103,7 @@ balance_adapters_data = [
     ({  'adapter': Address('0x0000000000000000000000000000000000000003'), 'current': 2000, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 15 },
         {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-500, 'leftovers':0, 'block': False, 'neutral': False}), # 2 : Withdraw 500 normally
 
-    ({  'adapter': Address('0x0000000000000000000000000000000000000005'), 'current': 1500, 'last_value': 1500, 'max_deposit': 300, 'ratio': 20 },
+    ({  'adapter': Address('0x0000000000000000000000000000000000000004'), 'current': 1500, 'last_value': 1500, 'max_deposit': 300, 'ratio': 20 },
         {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':300, 'leftovers':200, 'block': False, 'neutral': False}), # 3 : Deposit 300 limited by max_deposit
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000005'), 'current': 2000, 'last_value': 1500, 'max_withdraw': -300, 'ratio': 15 },
@@ -114,6 +114,9 @@ balance_adapters_data = [
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000007'), 'current': 1000, 'last_value': 1500, 'ratio': 10 },
         {'exception': None, 'ratio_value': 100, 'target':0, 'delta':-1000, 'leftovers':0, 'block': True, 'neutral': False, 'new_ratio': 0}), # 6 : Loss! Withdraw 1000.
+
+    ({  'adapter': Address('0x0000000000000000000000000000000000000008'), 'current': 500, 'last_value': 500, 'max_deposit': neutral_max_deposit, 'ratio': 5 },
+        {'exception': None, 'ratio_value': 100, 'target':500, 'delta':0, 'leftovers':0, 'block': False, 'neutral': True}), # 7 : Neutral adapter, in balance.    
 ]
 
 def test_allocate_balance_adapter_tx(funds_alloc):
@@ -161,6 +164,7 @@ def _total_ratios(adapter_states: List[BalanceAdapter] = []) -> int:
     return result
 
 def _adapter_states(offset_list: List[int] = []) -> List[BalanceAdapter]:
+    assert not len(offset_list) > MAX_ADAPTERS, "Too many adapters!"
     states = [BalanceAdapter.from_dict(balance_adapters_data[x][0]) for x in offset_list]
     return [x for x in chain(states, [BalanceAdapter()] * MAX_ADAPTERS)][:MAX_ADAPTERS]
 
@@ -168,6 +172,7 @@ def _txs(tx_list: List[tuple] = []) -> List[tuple]:
     """
     tx_list should be [(delta, offset into balance_adapters_data),]
     """
+    assert not len(tx_list) > MAX_ADAPTERS, "Too many txs!"
     txs = [(x[0], BalanceAdapter.from_dict(balance_adapters_data[x[1]][0]).adapter) for x in tx_list]
     return [x for x in chain(txs, [(0, "0x0000000000000000000000000000000000000000")] * MAX_ADAPTERS)][:MAX_ADAPTERS]
 
@@ -178,39 +183,48 @@ def _blocked_adapters(adapter_list: List[int] = []) -> List[str]:
 # The adapters in these scenarios reference the offset of balance_adapters_data to select adapters.
 tx_scenarios = [ # Deposit scenarios
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [0,5],
-                  'tx_results': [(1000,0),], 'blocked': []}, # Standard deposit to primary adapter with neutral standby
+                  'tx_results': [(1000,0),], 'blocked': []}, # 1 - Standard deposit to primary adapter with neutral standby
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [5,0],
-                  'tx_results': [(1000,0),], 'blocked': []}, # Standard deposit to primary adapter with neutral standby (reverse order)
+                  'tx_results': [(1000,0),], 'blocked': []}, # 2 - Standard deposit to primary adapter with neutral standby (reverse order)
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [5],
-                  'tx_results': [(1000,5),], 'blocked': []}, # Deposit to neutral standby - no other adapters
+                  'tx_results': [(1000,5),], 'blocked': []}, # 3 - Deposit to neutral standby - no other adapters
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [],
-                  'tx_results': [], 'blocked': []}, # Deposit with no adapters. Does nothing.
+                  'tx_results': [], 'blocked': []}, # 4 - Deposit with no adapters. Does nothing.
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [3,5],
-                  'tx_results': [(300,3),(700,5)], 'blocked': []}, # Limited deposit to primary adapter with neutral taking the rest.
+                  'tx_results': [(300,3),(700,5)], 'blocked': []}, # 5 - Limited deposit to primary adapter with neutral taking the rest.
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [3],
-                  'tx_results': [(300,3)], 'blocked': []}, # Limited deposit to primary adapter with rest staying in vault buffer no neutral adapter.
+                  'tx_results': [(300,3)], 'blocked': []}, # 6 - Limited deposit to primary adapter with rest staying in vault buffer no neutral adapter.
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [0,1,2,3,4],
+                  'tx_results': [(1000,1)], 'blocked': []}, # 7 - Deposit satisfied by 1 because it is most out of balance for deposits, no neutreal adapter.
 
                 # Withdraw scenarios satisfied by vault buffer
                 {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [],
-                  'tx_results': [], 'blocked': []}, # Withdraw with no adapter but plenty of vault buffer so no tx.
+                  'tx_results': [], 'blocked': []}, # 8 - Withdraw with no adapter but plenty of vault buffer so no tx.
                 {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [3,5],
-                  'tx_results': [], 'blocked': []}, # Withdraw with normal adapter and neutral adapter but plenty of vault buffer so no tx.
+                  'tx_results': [], 'blocked': []}, # 9 - Withdraw with normal adapter and neutral adapter but plenty of vault buffer so no tx.
                 {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5],
-                  'tx_results': [], 'blocked': []}, # Withdraw with neutral adapter but plenty of vault buffer so no tx.
+                  'tx_results': [], 'blocked': []}, # 10 - Withdraw with neutral adapter but plenty of vault buffer so no tx.
 
                 # Withdraw scenarios satisfied by adapter withdraws
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5],
-                  'tx_results': [(-300,5)], 'blocked': []}, # Withdraw with neutral adapter.
+                  'tx_results': [(-300,5)], 'blocked': []}, # 11 - Withdraw with neutral adapter.
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [0, 5],
-                  'tx_results': [(-300,5)], 'blocked': []}, # Withdraw with regular adapter & neutral adapter, satisfied exclusively by neutral adapter.
+                  'tx_results': [(-300,5)], 'blocked': []}, # 12 - Withdraw with regular adapter & neutral adapter, satisfied exclusively by neutral adapter.
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5, 0],
-                  'tx_results': [(-300,5)], 'blocked': []}, # Withdraw with regular adapter & neutral adapter (rev order), satisfied exclusively by neutral adapter.
+                  'tx_results': [(-300,5)], 'blocked': []}, # 13 - Withdraw with regular adapter & neutral adapter (rev order), satisfied exclusively by neutral adapter.
 
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [0],
-                  'tx_results': [(-300,0)], 'blocked': []}, # Withdraw with regular adapter and no neutral adapter.
+                  'tx_results': [(-300,0)], 'blocked': []}, # 14 - Withdraw with regular adapter and no neutral adapter.
+                {'vault_balance': 0, 'target_vault_balance': 1000, 'min_payout': 0, 'adapters': [0,1,2,3,4],
+                  'tx_results': [(-1000,2)], 'blocked': []}, # 15 - Withdraw satisfied by 2 because it is most out of balance for withdraws, no neutreal adapter.
+                {'vault_balance': 0, 'target_vault_balance': 1000, 'min_payout': 0, 'adapters': [1,2,3,4,7],
+                  'tx_results': [(-500,7),(-500,2)], 'blocked': []}, # 16 - Withdraw partially satisified by 7 because it is the neutreal adapter then by 2 which is most out of balance.
+                {'vault_balance': 0, 'target_vault_balance': 200, 'min_payout': 0, 'adapters': [1,2,3,4,7],
+                  'tx_results': [(-200,7)], 'blocked': []}, # 17 - Withdraw satisfied by 7 because it is the neutreal adapter even though it is in balance.
             ]
 
 def test_generate_balance_txs(funds_alloc):
+    count = 1
     for scenario in tx_scenarios:
         adapter_states = _adapter_states(scenario['adapters'])
         print("adapter_states = %s" % adapter_states)
@@ -228,7 +242,9 @@ def test_generate_balance_txs(funds_alloc):
         blocked_result = _blocked_adapters(scenario.get('blocked',[]))
         txs, blocked_addresses = funds_alloc.generate_balance_txs(scenario['vault_balance'], scenario['target_vault_balance'], scenario.get('min_payout',0), total_assets, total_ratios, adapter_tuples, False)
 
-        print("txs = %s" % txs)
+        print("\n***Scenario #%s***" % count)
+        count += 1
+        print("\ntxs = %s\ngood_result = %s\n" % (txs, good_result))
         print("blocked_addresses = %s" % blocked_addresses)
         assert txs == good_result
         assert blocked_addresses == blocked_result
