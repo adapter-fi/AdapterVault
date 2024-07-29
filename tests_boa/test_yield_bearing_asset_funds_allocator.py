@@ -196,35 +196,37 @@ tx_scenarios = [ # Deposit scenarios
                   'tx_results': [(300,3)], 'blocked': []}, # 6 - Limited deposit to primary adapter with rest staying in vault buffer no neutral adapter.
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [0,1,2,3,4],
                   'tx_results': [(1000,1)], 'blocked': []}, # 7 - Deposit satisfied by 1 because it is most out of balance for deposits, no neutreal adapter.
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [0,1,2,3,6],
+                  'tx_results': [(-1000,6), (1000,1)], 'blocked': [6]}, # 8 - Blocked withdraw then original deposit satisfied by 1 because it is most out of balance for deposits, no neutreal adapter.
 
                 # Withdraw scenarios satisfied by vault buffer
                 {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [],
-                  'tx_results': [], 'blocked': []}, # 8 - Withdraw with no adapter but plenty of vault buffer so no tx.
+                  'tx_results': [], 'blocked': []}, # 9 - Withdraw with no adapter but plenty of vault buffer so no tx.
                 {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [3,5],
-                  'tx_results': [], 'blocked': []}, # 9 - Withdraw with normal adapter and neutral adapter but plenty of vault buffer so no tx.
+                  'tx_results': [], 'blocked': []}, # 10 - Withdraw with normal adapter and neutral adapter but plenty of vault buffer so no tx.
                 {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5],
-                  'tx_results': [], 'blocked': []}, # 10 - Withdraw with neutral adapter but plenty of vault buffer so no tx.
+                  'tx_results': [], 'blocked': []}, # 11 - Withdraw with neutral adapter but plenty of vault buffer so no tx.
 
                 # Withdraw scenarios satisfied by adapter withdraws
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5],
-                  'tx_results': [(-300,5)], 'blocked': []}, # 11 - Withdraw with neutral adapter after draining vault buffer.
+                  'tx_results': [(-300,5)], 'blocked': []}, # 12 - Withdraw with neutral adapter after draining vault buffer.
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [0, 5],
-                  'tx_results': [(-300,5)], 'blocked': []}, # 12 - Withdraw with regular adapter & neutral adapter, satisfied exclusively by neutral adapter.
+                  'tx_results': [(-300,5)], 'blocked': []}, # 13 - Withdraw with regular adapter & neutral adapter, satisfied exclusively by neutral adapter.
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5, 0],
-                  'tx_results': [(-300,5)], 'blocked': []}, # 13 - Withdraw with regular adapter & neutral adapter (rev order), satisfied exclusively by neutral adapter.
+                  'tx_results': [(-300,5)], 'blocked': []}, # 14 - Withdraw with regular adapter & neutral adapter (rev order), satisfied exclusively by neutral adapter.
 
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [0],
-                  'tx_results': [(-300,0)], 'blocked': []}, # 14 - Withdraw with regular adapter and no neutral adapter.
+                  'tx_results': [(-300,0)], 'blocked': []}, # 15 - Withdraw with regular adapter and no neutral adapter.
                 {'vault_balance': 0, 'target_vault_balance': 1000, 'min_payout': 0, 'adapters': [0,1,2,3,4],
-                  'tx_results': [(-1000,2)], 'blocked': []}, # 15 - Withdraw satisfied by 2 because it is most out of balance for withdraws, no neutreal adapter.
+                  'tx_results': [(-1000,2)], 'blocked': []}, # 16 - Withdraw satisfied by 2 because it is most out of balance for withdraws, no neutreal adapter.
                 {'vault_balance': 0, 'target_vault_balance': 1000, 'min_payout': 0, 'adapters': [1,2,3,4,7],
-                  'tx_results': [(-500,7),(-500,2)], 'blocked': []}, # 16 - Withdraw partially satisified by 7 because it is the neutreal adapter then by 2 which is most out of balance.
+                  'tx_results': [(-500,7),(-500,2)], 'blocked': []}, # 17 - Withdraw partially satisified by 7 because it is the neutreal adapter then by 2 which is most out of balance.
                 {'vault_balance': 0, 'target_vault_balance': 200, 'min_payout': 0, 'adapters': [1,2,3,4,7],
-                  'tx_results': [(-200,7)], 'blocked': []}, # 17 - Withdraw satisfied by 7 because it is the neutreal adapter even though it is in balance and 2 is most out of balance.
+                  'tx_results': [(-200,7)], 'blocked': []}, # 18 - Withdraw satisfied by 7 because it is the neutreal adapter even though it is in balance and 2 is most out of balance.
                 {'vault_balance': 0, 'target_vault_balance': 3000, 'min_payout': 0, 'adapters': [1,2,3,4,7],
-                  'tx_results': [(-500,7),(-2000,2),(-500,1)], 'blocked': []}, # 18 - Withdraw satisfied by 7 (neutral), then 2 (out of balance), then 1 because it's simply next in line.
+                  'tx_results': [(-500,7),(-2000,2),(-500,1)], 'blocked': []}, # 19 - Withdraw satisfied by 7 (neutral), then 2 (out of balance), then 1 because it's simply next in line.
                 {'vault_balance': 0, 'target_vault_balance': 4000, 'min_payout': 0, 'adapters': [1,2,6,4,7],
-                  'tx_results': [(-1000,6), (-500,7),(-2000,2),(-500,1)], 'blocked': [6]}, # 19 - Withdraw satisfied by 6 (blocked), then 7 (neutral), then 2 (out of balance), then 1 because it's simply next in line.                  
+                  'tx_results': [(-1000,6), (-500,7),(-2000,2),(-500,1)], 'blocked': [6]}, # 20 - Withdraw satisfied by 6 (blocked), then 7 (neutral), then 2 (out of balance), then 1 because it's simply next in line.                  
             ]
 
 def test_generate_balance_txs(funds_alloc):
