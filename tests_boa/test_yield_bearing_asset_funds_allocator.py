@@ -183,6 +183,10 @@ tx_scenarios = [ {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout'
                   'tx_results': [(1000,5),], 'blocked': []}, # Deposit to neutral standby - no other adapters
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [],
                   'tx_results': [], 'blocked': []}, # Deposit with no adapters. Does nothing.
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [3,5],
+                  'tx_results': [(300,3),(700,5)], 'blocked': []}, # Limited deposit to primary adapter with neutral taking the rest.
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [3],
+                  'tx_results': [(300,3)], 'blocked': []}, # Limited deposit to primary adapter with rest staying in vault buffer no neutral adapter.
             ]
 
 def test_generate_balance_txs(funds_alloc):

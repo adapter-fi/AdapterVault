@@ -178,13 +178,11 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             if _adapter_states[max_delta_deposit_pos].max_deposit < convert(_vault_balance, int256):
                 _adapter_states[max_delta_deposit_pos].delta = _adapter_states[max_delta_deposit_pos].max_deposit
                 adapter_txs.append( BalanceTX({qty: _adapter_states[max_delta_deposit_pos].max_deposit, 
-                                               adapter: _adapter_states[max_delta_deposit_pos].adapter}) ) 
-
-                assert False, "Got here!" # BDM
+                                               adapter: _adapter_states[max_delta_deposit_pos].adapter}) )                 
 
                 # # Do we have a neutral adapter to take the rest?
                 if neutral_adapter_pos != MAX_ADAPTERS:
-                    adapter_txs.append( BalanceTX({qty: _adapter_states[max_delta_deposit_pos].max_deposit - convert(_vault_balance, int256), 
+                    adapter_txs.append( BalanceTX({qty: convert(_vault_balance, int256) - _adapter_states[max_delta_deposit_pos].max_deposit, 
                                                    adapter: _adapter_states[neutral_adapter_pos].adapter}) )
 
             # Great - it can take the whole thing.
