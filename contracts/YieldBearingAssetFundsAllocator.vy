@@ -126,6 +126,8 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
         if blocked:
             assert _adapter_states[pos].delta <= 0, "Blocked adapter flaw trying to deposit!" # This can't happen.
             blocked_adapters.append(_adapter_states[pos])
+
+            assert False, "Blocked Adapter handling!" # BDM
             # TODO FUTURE - if we're doing a deposit now would be the time to re-calculate the remaining_funds_to_allocate 
             #               and ratio_value in order to immediately re-invest these liquidated funds into other adapters.
 
@@ -212,27 +214,27 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
                 shortfall = 0
             else:
                 # Got some...
-                shortfall -= _adapter_states[neutral_adapter_pos].current
                 adapter_txs.append( BalanceTX({qty: convert(_adapter_states[neutral_adapter_pos].current, int256) * -1, 
                                                adapter: _adapter_states[neutral_adapter_pos].adapter}) )
+                shortfall -= _adapter_states[neutral_adapter_pos].current                
 
         # Is there still more to go and we have an adapter that most needs to remove funds?
         if shortfall > 0 and min_delta_withdraw_pos != MAX_ADAPTERS:
             if _adapter_states[min_delta_withdraw_pos].current > shortfall:
                 # Got it all!
-                shortfall = 0
                 adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
                                                adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
+                shortfall = 0
             else:
                 # Got some...
-                shortfall -= _adapter_states[min_delta_withdraw_pos].current
                 adapter_txs.append( BalanceTX({qty: convert(_adapter_states[min_delta_withdraw_pos].current, int256) * -1, 
                                                adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
+                shortfall -= _adapter_states[min_delta_withdraw_pos].current                
 
         # TODO - if we still have a shortfall then we have to walk across the remaining adapters (ignoring 
         #        min_delta_withdraw_pos & neutral_adapter_pos) until we come up with enough funds to fulfill the withdraw.
         if shortfall > 0:
-            assert False, "HAPPY CASE NOT FOUND!"
+            assert False, "HAPPY CASE NOT FOUND!" # BDM
 
     else:
         # This is withdraw satisfied by the vault buffer.

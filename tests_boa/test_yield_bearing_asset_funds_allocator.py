@@ -201,6 +201,13 @@ tx_scenarios = [ # Deposit scenarios
                 # Withdraw scenarios satisfied by adapter withdraws
                 {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5],
                   'tx_results': [(-300,5)], 'blocked': []}, # Withdraw with neutral adapter.
+                {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [0, 5],
+                  'tx_results': [(-300,5)], 'blocked': []}, # Withdraw with regular adapter & neutral adapter, satisfied exclusively by neutral adapter.
+                {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5, 0],
+                  'tx_results': [(-300,5)], 'blocked': []}, # Withdraw with regular adapter & neutral adapter (rev order), satisfied exclusively by neutral adapter.
+
+                {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [0],
+                  'tx_results': [(-300,0)], 'blocked': []}, # Withdraw with regular adapter and no neutral adapter.
             ]
 
 def test_generate_balance_txs(funds_alloc):
