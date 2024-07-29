@@ -155,19 +155,6 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             # TODO: update existing allocation accounting for no transfer.
             pass
 
-    # Pretty sure this is a bad idea because we're likely to do double accounting for neutral adapter.
-    # We explicitly prioritize neutral adapter later so this is unnecessary. 
-    # # If there's a neutral adapter but no max deposit or min withdraw then give the open spots to the neutral adapter.
-    # if neutral_adapter_pos != MAX_ADAPTERS:
-
-    #     # This should be impossible but what if the neutral adapter is blocked?
-    #     # BDM TODO : Check this later against a list of addresses! assert _adapter_states[neutral_adapter_pos].adapter not in blocked_adapters, "ERROR - Neutral adapter blocked!"
-
-    #     if max_delta_deposit_pos == MAX_ADAPTERS:
-    #         max_delta_deposit_pos = neutral_adapter_pos
-    #     if min_delta_withdraw_pos == MAX_ADAPTERS:
-    #         min_delta_withdraw_pos = neutral_adapter_pos
-
     # Are we dealing with a deposit?
     if _target_asset_balance == 0 and _vault_balance > 0:
 
@@ -189,7 +176,6 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             else:
                 adapter_txs.append( BalanceTX({qty: convert(_vault_balance, int256), 
                                                adapter: _adapter_states[max_delta_deposit_pos].adapter}) ) 
-                #assert False, "Got it all!" # BDM
 
         # No normal adapters available to take our deposit.
         else:
@@ -221,13 +207,13 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
         if neutral_adapter_pos != MAX_ADAPTERS and _adapter_states[neutral_adapter_pos].current > 0:
             if _adapter_states[neutral_adapter_pos].current > shortfall:
                 # Got it all!
-                shortfall = 0
-                adapter_txs.append( BalanceTX({qty: convert(shortfall, int256), 
+                adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
                                                adapter: _adapter_states[neutral_adapter_pos].adapter}) )
+                shortfall = 0
             else:
                 # Got some...
                 shortfall -= _adapter_states[neutral_adapter_pos].current
-                adapter_txs.append( BalanceTX({qty: convert(_adapter_states[neutral_adapter_pos].current, int256), 
+                adapter_txs.append( BalanceTX({qty: convert(_adapter_states[neutral_adapter_pos].current, int256) * -1, 
                                                adapter: _adapter_states[neutral_adapter_pos].adapter}) )
 
         # Is there still more to go and we have an adapter that most needs to remove funds?
@@ -235,12 +221,12 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             if _adapter_states[min_delta_withdraw_pos].current > shortfall:
                 # Got it all!
                 shortfall = 0
-                adapter_txs.append( BalanceTX({qty: convert(shortfall, int256), 
+                adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
                                                adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
             else:
                 # Got some...
                 shortfall -= _adapter_states[min_delta_withdraw_pos].current
-                adapter_txs.append( BalanceTX({qty: convert(_adapter_states[min_delta_withdraw_pos].current, int256), 
+                adapter_txs.append( BalanceTX({qty: convert(_adapter_states[min_delta_withdraw_pos].current, int256) * -1, 
                                                adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
 
         # TODO - if we still have a shortfall then we have to walk across the remaining adapters (ignoring 
@@ -249,7 +235,8 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
             assert False, "HAPPY CASE NOT FOUND!"
 
     else:
-        assert False, "No transaction!" # BDM
+        # This is withdraw satisfied by the vault buffer.
+        pass
 
     result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])

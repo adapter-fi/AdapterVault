@@ -175,7 +175,9 @@ def _blocked_adapters(adapter_list: List[int] = []) -> List[str]:
     adapters = [BalanceAdapter.from_dict(balance_adapters_data[x][0]).adapter for x in adapter_list]
     return [x for x in chain(adapters, ["0x0000000000000000000000000000000000000000"] * MAX_ADAPTERS)][:MAX_ADAPTERS]
 
-tx_scenarios = [ {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [0,5],
+# The adapters in these scenarios reference the offset of balance_adapters_data to select adapters.
+tx_scenarios = [ # Deposit scenarios
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [0,5],
                   'tx_results': [(1000,0),], 'blocked': []}, # Standard deposit to primary adapter with neutral standby
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [5,0],
                   'tx_results': [(1000,0),], 'blocked': []}, # Standard deposit to primary adapter with neutral standby (reverse order)
@@ -187,6 +189,18 @@ tx_scenarios = [ {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout'
                   'tx_results': [(300,3),(700,5)], 'blocked': []}, # Limited deposit to primary adapter with neutral taking the rest.
                  {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [3],
                   'tx_results': [(300,3)], 'blocked': []}, # Limited deposit to primary adapter with rest staying in vault buffer no neutral adapter.
+
+                # Withdraw scenarios satisfied by vault buffer
+                {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [],
+                  'tx_results': [], 'blocked': []}, # Withdraw with no adapter but plenty of vault buffer so no tx.
+                {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [3,5],
+                  'tx_results': [], 'blocked': []}, # Withdraw with normal adapter and neutral adapter but plenty of vault buffer so no tx.
+                {'vault_balance': 1000, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5],
+                  'tx_results': [], 'blocked': []}, # Withdraw with neutral adapter but plenty of vault buffer so no tx.
+
+                # Withdraw scenarios satisfied by adapter withdraws
+                {'vault_balance': 200, 'target_vault_balance': 500, 'min_payout': 0, 'adapters': [5],
+                  'tx_results': [(-300,5)], 'blocked': []}, # Withdraw with neutral adapter.
             ]
 
 def test_generate_balance_txs(funds_alloc):
