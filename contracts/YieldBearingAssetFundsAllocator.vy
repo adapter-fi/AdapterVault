@@ -190,7 +190,9 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
                                                adapter: _adapter_states[max_delta_deposit_pos].adapter}) ) 
 
         # Otherwise we got no where to send it so the funds are just gonna stay in the vault buffer.
-
+        else:
+            assert False, "Not a deposit!"
+            
     # Is it a withdraw and is our buffer short of funds?
     elif _target_asset_balance > 0 and _vault_balance < _target_asset_balance:
 
