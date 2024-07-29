@@ -95,25 +95,25 @@ class BalanceAdapter:
 
 balance_adapters_data = [
     ({  'adapter': Address('0x0000000000000000000000000000000000000001'), 'current': 1000, 'last_value': 900, 'ratio': 10 },
-        {'exception': None, 'ratio_value': 100, 'target':1000, 'delta':0, 'leftovers':0, 'block': False, 'neutral': False}), # No transfer
+        {'exception': None, 'ratio_value': 100, 'target':1000, 'delta':0, 'leftovers':0, 'block': False, 'neutral': False}), # 0 : No transfer
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000002'), 'current': 1500, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 20 },
-        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':500, 'leftovers':0, 'block': False, 'neutral': False}), # Deposit 500 normally
+        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':500, 'leftovers':0, 'block': False, 'neutral': False}), # 1  : Deposit 500 normally
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000003'), 'current': 2000, 'last_value': 1500, 'max_deposit': 1000, 'ratio': 15 },
-        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-500, 'leftovers':0, 'block': False, 'neutral': False}), # Withdraw 500 normally
+        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-500, 'leftovers':0, 'block': False, 'neutral': False}), # 2 : Withdraw 500 normally
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000005'), 'current': 1500, 'last_value': 1500, 'max_deposit': 300, 'ratio': 20 },
-        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':300, 'leftovers':200, 'block': False, 'neutral': False}), # Deposit 300 limited by max_deposit
+        {'exception': None, 'ratio_value': 100, 'target':2000, 'delta':300, 'leftovers':200, 'block': False, 'neutral': False}), # 3 : Deposit 300 limited by max_deposit
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000005'), 'current': 2000, 'last_value': 1500, 'max_withdraw': -300, 'ratio': 15 },
-        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-300, 'leftovers':-200, 'block': False, 'neutral': False}), # Withdraw 300 limited by max_withdraw
+        {'exception': None, 'ratio_value': 100, 'target':1500, 'delta':-300, 'leftovers':-200, 'block': False, 'neutral': False}), # 4 : Withdraw 300 limited by max_withdraw
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000006'), 'current': 1000, 'last_value': 900, 'max_deposit': neutral_max_deposit, 'ratio': 0 },
-        {'exception': None, 'ratio_value': 100, 'target':0, 'delta':-1000, 'leftovers':0, 'block': False, 'neutral': True}), # Neutral adapter, Withdraw 1000.
+        {'exception': None, 'ratio_value': 100, 'target':0, 'delta':-1000, 'leftovers':0, 'block': False, 'neutral': True}), # 5 : Neutral adapter, Withdraw 1000.
 
     ({  'adapter': Address('0x0000000000000000000000000000000000000007'), 'current': 1000, 'last_value': 1500, 'ratio': 10 },
-        {'exception': None, 'ratio_value': 100, 'target':0, 'delta':-1000, 'leftovers':0, 'block': True, 'neutral': False, 'new_ratio': 0}), # Loss! Withdraw 1000.
+        {'exception': None, 'ratio_value': 100, 'target':0, 'delta':-1000, 'leftovers':0, 'block': True, 'neutral': False, 'new_ratio': 0}), # 6 : Loss! Withdraw 1000.
 ]
 
 def test_allocate_balance_adapter_tx(funds_alloc):
@@ -175,25 +175,35 @@ def _blocked_adapters(adapter_list: List[int] = []) -> List[str]:
     adapters = [BalanceAdapter.from_dict(balance_adapters_data[x][0]).adapter for x in adapter_list]
     return [x for x in chain(adapters, ["0x0000000000000000000000000000000000000000"] * MAX_ADAPTERS)][:MAX_ADAPTERS]
 
+tx_scenarios = [ {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [0,5],
+                  'tx_results': [(1000,0),], 'blocked': []}, # Standard deposit to primary adapter with neutral standby
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [5,0],
+                  'tx_results': [(1000,0),], 'blocked': []}, # Standard deposit to primary adapter with neutral standby (reverse order)
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [5],
+                  'tx_results': [(1000,5),], 'blocked': []}, # Deposit to neutral standby - no other adapters
+                 {'vault_balance': 1000, 'target_vault_balance': 0, 'min_payout': 0, 'adapters': [],
+                  'tx_results': [], 'blocked': []}, # Deposit with no adapters. Does nothing.
+            ]
 
 def test_generate_balance_txs(funds_alloc):
-    adapter_states = _adapter_states([0,5])
-    print("adapter_states = %s" % adapter_states)
+    for scenario in tx_scenarios:
+        adapter_states = _adapter_states(scenario['adapters'])
+        print("adapter_states = %s" % adapter_states)
 
-    adapter_tuples = [x.to_tuple() for x in adapter_states]
-    print("adapter_tuples = %s" % adapter_tuples)
+        adapter_tuples = [x.to_tuple() for x in adapter_states]
+        print("adapter_tuples = %s" % adapter_tuples)
 
-    total_assets = _total_assets(1000,adapter_states)
-    total_ratios = _total_ratios(adapter_states)
+        total_assets = _total_assets(scenario['vault_balance'],adapter_states)
+        total_ratios = _total_ratios(adapter_states)
 
-    print("total_assets = %s" % total_assets)
-    print("total_ratios = %s" % total_ratios)
+        print("total_assets = %s" % total_assets)
+        print("total_ratios = %s" % total_ratios)
 
-    good_result = _txs([(1000, 0)])
-    blocked_result = _blocked_adapters()
-    txs, blocked_addresses = funds_alloc.generate_balance_txs(1000, 0, 0, total_assets, total_ratios, adapter_tuples, False)
+        good_result = _txs(scenario.get('tx_results',[]))
+        blocked_result = _blocked_adapters(scenario.get('blocked',[]))
+        txs, blocked_addresses = funds_alloc.generate_balance_txs(scenario['vault_balance'], scenario['target_vault_balance'], scenario.get('min_payout',0), total_assets, total_ratios, adapter_tuples, False)
 
-    print("txs = %s" % txs)
-    print("blocked_addresses = %s" % blocked_addresses)
-    assert txs == good_result
-    assert blocked_addresses == blocked_result
+        print("txs = %s" % txs)
+        print("blocked_addresses = %s" % blocked_addresses)
+        assert txs == good_result
+        assert blocked_addresses == blocked_result

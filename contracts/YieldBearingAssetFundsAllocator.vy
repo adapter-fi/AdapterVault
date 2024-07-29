@@ -110,6 +110,7 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
     neutral_adapter_pos : uint256 = MAX_ADAPTERS
 
     remaining_funds_to_allocate : uint256 = _total_assets - _target_asset_balance
+    if _total_ratios == 0: _total_ratios = 1 # Prevent a potential divide by zero exception.
     ratio_value : uint256 = remaining_funds_to_allocate / _total_ratios
 
     for pos in range(MAX_ADAPTERS):
@@ -192,9 +193,17 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
                                                adapter: _adapter_states[max_delta_deposit_pos].adapter}) ) 
                 #assert False, "Got it all!" # BDM
 
-        # Otherwise we got no where to send it so the funds are just gonna stay in the vault buffer.
+        # No normal adapters available to take our deposit.
         else:
-            assert False, "Not a deposit!" # BDM
+            # Do we have a neutral adapter to take the rest?
+            if neutral_adapter_pos != MAX_ADAPTERS:
+                assert convert(_vault_balance, int256) <= _adapter_states[neutral_adapter_pos].max_deposit, "Over deposit on neutral vault!"
+                adapter_txs.append( BalanceTX({qty: convert(_vault_balance, int256), 
+                                               adapter: _adapter_states[neutral_adapter_pos].adapter}) )
+            # Nothing to do but let it sit in the vault buffer.
+            else:
+                pass
+
 
     # Is it a withdraw and is our buffer short of funds?
     elif _target_asset_balance > 0 and _vault_balance < _target_asset_balance:
