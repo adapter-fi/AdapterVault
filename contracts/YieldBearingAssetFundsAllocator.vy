@@ -62,6 +62,16 @@ struct BalanceAdapter:
     target: uint256 
     delta: int256
 
+fullrebalance: transient(HashMap[address, bool])    
+
+interface Vault:
+    def owner() -> address: nonpayable
+
+@external
+def set_fullrebalance(vault: address):
+    assert Vault(vault).owner() == msg.sender
+    self.fullrebalance[vault] = True
+
 
 @external
 @view
@@ -91,7 +101,8 @@ def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min
 @internal
 @view
 def _is_full_rebalance() -> bool:
-    return False
+    return self.fullrebalance[msg.sender]
+    
 
 # TODO : create a _generate_full_balance_txs function similar to _generate_balance_txs
 
