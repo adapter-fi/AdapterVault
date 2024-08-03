@@ -227,6 +227,10 @@ tx_scenarios = [ # Deposit scenarios
                   'tx_results': [(-500,7),(-2000,2),(-500,1)], 'blocked': []}, # 19 - Withdraw satisfied by 7 (neutral), then 2 (out of balance), then 1 because it's simply next in line.
                 {'vault_balance': 0, 'target_vault_balance': 4000, 'min_payout': 0, 'adapters': [1,2,6,4,7],
                   'tx_results': [(-1000,6), (-500,7),(-2000,2),(-500,1)], 'blocked': [6]}, # 20 - Withdraw satisfied by 6 (blocked), then 7 (neutral), then 2 (out of balance), then 1 because it's simply next in line.                  
+
+                # Check for min_payout compliance.
+                {'vault_balance': 10, 'target_vault_balance': 0, 'min_payout': 100, 'adapters': [0,5],
+                  'tx_results': [], 'blocked': []}, # 21 - No tx because the min_payout for the deposit is larger than the vault_balance to deposit.
             ]
 
 def test_generate_balance_txs(funds_alloc):

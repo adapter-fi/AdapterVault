@@ -137,15 +137,11 @@ def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_
     return result_txs, result_blocked                            
 
 
-# TODO : create a _generate_full_balance_txs function similar to _generate_balance_txs
-
 @internal
 @pure
 def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
                           _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
                           _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
-
-    # TODO : take into account _min_proposer_payout for deposits.
 
     adapter_txs : DynArray[BalanceTX,MAX_ADAPTERS] = empty(DynArray[BalanceTX,MAX_ADAPTERS])
     blocked_adapters : BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
@@ -170,9 +166,13 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
     if _full_rebalance:
         return self._full_rebalance_txs(_adapter_states, blocked_adapters)
 
+    ##
+    ## Since not a full rebalance we want to just settle on a single optimal
+    ## transaction if possible (plus any necessary blocked adapter exists).
+    ##
 
     # Are we dealing with a deposit?
-    if _target_asset_balance == 0 and _vault_balance > 0:
+    if _target_asset_balance == 0 and _vault_balance > _min_proposer_payout:
 
         # Do we have a best case adapter to receive the funds?
         if max_delta_deposit_pos != MAX_ADAPTERS:  
