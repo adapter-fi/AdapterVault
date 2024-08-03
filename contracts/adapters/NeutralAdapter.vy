@@ -117,7 +117,7 @@ def deposit(_asset_amount: uint256, _pregen_info: DynArray[Bytes[4096], MAX_ADAP
 @nonpayable
 def withdraw(_asset_amount: uint256 , _withdraw_to: address, 
              _pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256 :
-    return AdapterVault(awrappedAsset).withdraw(_asset_amount, _withdraw_to, 0, _pregen_info)
+    return AdapterVault(awrappedAsset).withdraw(_asset_amount, _withdraw_to, _withdraw_to, 0, _pregen_info)
 
 
 @external
