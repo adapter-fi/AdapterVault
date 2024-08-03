@@ -62,6 +62,11 @@ struct BalanceAdapter:
     target: uint256 
     delta: int256
 
+##
+##  Used to indicate by the vault owner that calls to getBalanceTXs during this transaction should attempt a full
+##  rebalance of the Vault's adapters. Transient is used to ensure this state doesn't persist outside of a single
+##  transaction.
+##
 fullrebalance: transient(HashMap[address, bool])    
 
 interface Vault:
@@ -110,7 +115,7 @@ def _is_full_rebalance() -> bool:
 @pure
 def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
                           _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
-                          _withdraw_only : bool, _full_rebalance : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
+                          _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
 
     # TODO : take into account _min_proposer_payout for deposits.
 
@@ -122,7 +127,12 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
     min_delta_withdraw_pos : uint256 = MAX_ADAPTERS
     neutral_adapter_pos : uint256 = MAX_ADAPTERS
 
-    _adapter_states, blocked_adapters, max_delta_deposit_pos, min_delta_withdraw_pos, neutral_adapter_pos = self._allocate_all_adapters( _target_asset_balance, _total_assets, _total_ratios, _adapter_states ) 
+    remaining_funds_to_allocate : uint256 = _total_assets - _target_asset_balance
+    if _total_ratios == 0: _total_ratios = 1 # Prevent a potential divide by zero exception.
+    ratio_value : uint256 = remaining_funds_to_allocate / _total_ratios
+
+    _adapter_states, blocked_adapters, max_delta_deposit_pos, \
+    min_delta_withdraw_pos, neutral_adapter_pos = self._allocate_all_adapters( ratio_value, _adapter_states ) 
 
     ##
     ##  Adapter plan established. Now turn into transactions based on policy requested.
@@ -279,18 +289,19 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
 
 @external
 @pure
-def generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
+def generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
+                         _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
+                         _withdraw_only : bool, _full_rebalance : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
     """
     """
-    return self._generate_balance_txs(_vault_balance, _target_asset_balance, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only)
+    return self._generate_balance_txs(_vault_balance, _target_asset_balance, _min_proposer_payout, 
+                                      _total_assets, _total_ratios, _adapter_states, 
+                                      _withdraw_only, _full_rebalance)
  
-
-NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(int256) = max_value(int256) - 42
-
 
 @internal
 @pure
-def _allocate_all_adapters( _target_asset_balance: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS] ) \
+def _allocate_all_adapters( _ratio_value: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS] ) \
                             -> (BalanceAdapter[MAX_ADAPTERS], BalanceAdapter[MAX_ADAPTERS], uint256, uint256, uint256):
     #                           _adapter_states, blocked_adapters, max_delta_deposit_pos, max_delta_withdraw_pos, neutral_adapter_pos
     blocked_adapters : BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
@@ -300,10 +311,6 @@ def _allocate_all_adapters( _target_asset_balance: uint256, _total_assets: uint2
     max_delta_deposit_pos : uint256 = MAX_ADAPTERS
     min_delta_withdraw_pos : uint256 = MAX_ADAPTERS
     neutral_adapter_pos : uint256 = MAX_ADAPTERS
-
-    remaining_funds_to_allocate : uint256 = _total_assets - _target_asset_balance
-    if _total_ratios == 0: _total_ratios = 1 # Prevent a potential divide by zero exception.
-    ratio_value : uint256 = remaining_funds_to_allocate / _total_ratios
 
     ##
     ##  Setup adapter dispositions for a full rebalance plan.
@@ -316,7 +323,7 @@ def _allocate_all_adapters( _target_asset_balance: uint256, _total_assets: uint2
         blocked : bool = False        
         neutral : bool = False
 
-        _adapter_states[pos], leftovers, blocked, neutral = self._allocate_balance_adapter_tx(ratio_value, _adapter_states[pos])
+        _adapter_states[pos], leftovers, blocked, neutral = self._allocate_balance_adapter_tx(_ratio_value, _adapter_states[pos])
 
         # Is this a blocked adapter now?
         if blocked:
@@ -353,6 +360,7 @@ def _allocate_all_adapters( _target_asset_balance: uint256, _total_assets: uint2
     return _adapter_states, blocked_adapters, max_delta_deposit_pos, min_delta_withdraw_pos, neutral_adapter_pos
 
 
+NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(int256) = max_value(int256) - 42
 
 
 @internal
