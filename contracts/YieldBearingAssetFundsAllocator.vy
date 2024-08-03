@@ -394,14 +394,14 @@ def _allocate_all_adapters( _ratio_value: uint256, _adapter_states: BalanceAdapt
 
     return _adapter_states, blocked_adapters, max_delta_deposit_pos, min_delta_withdraw_pos, neutral_adapter_pos
 
-
-NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(int256) = max_value(int256) - 42
+#_HACK : constant(int128) = max_value(int256) - 42
+NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(uint256) = 2**255 - 43
 
 
 @internal
 @pure
 def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
-    is_neutral_adapter : bool = _balance_adapter.max_deposit == NEUTRAL_ADAPTER_MAX_DEPOSIT
+    is_neutral_adapter : bool = _balance_adapter.max_deposit == convert(NEUTRAL_ADAPTER_MAX_DEPOSIT, int256)
 
     # Have funds been lost?
     should_we_block_adapter : bool = False
