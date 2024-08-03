@@ -250,7 +250,9 @@ def test_generate_balance_txs(funds_alloc):
 
         good_result = _txs(scenario.get('tx_results',[]))
         blocked_result = _blocked_adapters(scenario.get('blocked',[]))
-        txs, blocked_addresses = funds_alloc.generate_balance_txs(scenario['vault_balance'], scenario['target_vault_balance'], scenario.get('min_payout',0), total_assets, total_ratios, adapter_tuples, False)
+        txs, blocked_addresses = funds_alloc.generate_balance_txs(scenario['vault_balance'], scenario['target_vault_balance'], 
+                                                                  scenario.get('min_payout',0), total_assets, total_ratios, adapter_tuples,
+                                                                  scenario.get('withdraw_only',False), scenario.get('full_rebalance', False))
 
         print("\n***Scenario #%s***" % count)
         count += 1

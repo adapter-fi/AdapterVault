@@ -80,27 +80,21 @@ def set_fullrebalance(vault: address):
 
 @external
 @view
-def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
-    return self._getBalanceTxs(_vault_balance, _target_asset_balance, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only )
+def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
+                  _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
+                  _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
+    full_rebalance : bool = self._is_full_rebalance()
+    return self._getBalanceTxs(_vault_balance, _target_asset_balance, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only, full_rebalance)
 
 
 @internal
 @pure
-def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):    
-    adapter_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
-    blocked_adapters : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
-    adapter_states: BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
-    d4626_delta : int256 = 0
-    tx_count : uint256 = 0
-
-    #d4626_delta, tx_count, adapter_states, blocked_adapters = self._getTargetBalances(_vault_balance, _target_asset_balance, _total_assets, _total_ratios, _adapter_states, _min_proposer_payout, _withdraw_only)
-
-    pos : uint256 = 0
-    for tx_bal in adapter_states:
-        adapter_txs[pos] = BalanceTX({qty: tx_bal.delta, adapter: tx_bal.adapter})
-        pos += 1
-
-    return adapter_txs, blocked_adapters
+def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
+                   _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
+                   _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):    
+    return self._generate_balance_txs(_vault_balance, _target_asset_balance, _min_proposer_payout, 
+                                      _total_assets, _total_ratios, _adapter_states, 
+                                      _withdraw_only, _full_rebalance)
 
 
 @internal
@@ -293,7 +287,8 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
 
             assert shortfall == 0, "ERROR - inadequate funds to fulfill withdraw!"
     else:
-        # This withdraw is satisfied by the vault buffer. Nothing we need to do.
+        # Nothing we need to do. Either withdraw is satisfied by the vault buffer or the deposit is
+        # too small for the minimum tx size.
         pass
 
     result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
@@ -322,7 +317,7 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
 @pure
 def generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
                          _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
-                         _withdraw_only : bool, _full_rebalance : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
+                         _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
     """
     """
     return self._generate_balance_txs(_vault_balance, _target_asset_balance, _min_proposer_payout, 
