@@ -22,7 +22,7 @@ interface AdapterVault:
 
 
 
-# BDM implements: IAdapter
+implements: IAdapter
 
 aoriginalAsset: immutable(address)
 awrappedAsset: immutable(address)
@@ -107,17 +107,17 @@ def totalAssets() -> uint256:
 # Deposit the asset into underlying LP. The tokens must be present inside the 4626 vault.
 @external
 @nonpayable
-def deposit(_asset_amount: uint256, _pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])):
+def deposit(_asset_amount: uint256, _pregen_info: Bytes[4096]=empty(Bytes[4096])):
     # Move funds into the LP.
-    AdapterVault(awrappedAsset).deposit(_asset_amount, msg.sender, 0, _pregen_info)
+    AdapterVault(awrappedAsset).deposit(_asset_amount, msg.sender, 0) #, _pregen_info)
 
 
 # Withdraw the asset from the LP to an arbitary address. 
 @external
 @nonpayable
 def withdraw(_asset_amount: uint256 , _withdraw_to: address, 
-             _pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256 :
-    return AdapterVault(awrappedAsset).withdraw(_asset_amount, _withdraw_to, _withdraw_to, 0, _pregen_info)
+             _pregen_info: Bytes[4096]=empty(Bytes[4096])) -> uint256 :
+    return AdapterVault(awrappedAsset).withdraw(_asset_amount, _withdraw_to, _withdraw_to, 0) #, _pregen_info)
 
 
 @external
