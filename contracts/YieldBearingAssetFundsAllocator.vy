@@ -33,9 +33,9 @@ withdraws will always try to pull from the "neutral adapter" first. And even if 
 adapter" has a 0 strategy ratio, leftovers will still get deposited there. If a "neutral adapter"
 has not been deployed then the default original behavior of using the 4626 vault buffer will resume.
 
-Finally - to support the 4626 vault's full balanceAdapters capabilities, we will check for some
-indication (TBD) that will let us know the contract owner has directly invoked this thus producing
-multiple txs to get the Vault fully aligned to the current strategy.
+Finally - to support the 4626 vault's full balanceAdapters capabilities, we will check for a
+fullrebalance indication that will let us know the contract owner has directly invoked this thus 
+producing multiple txs to get the Vault fully aligned to the current strategy.
 """
 
 ##
@@ -373,11 +373,9 @@ def _allocate_all_adapters( _ratio_value: uint256, _adapter_states: BalanceAdapt
         # Is this a key adapter? If so it's not eligible to be max deposit or min withdraw adapter unless no other qualifies.
         if neutral:
             neutral_adapter_pos = pos
-            # TODO : update existing allocation & deposit/withdraw accounting.
         
         # Is this a deposit?
         elif _adapter_states[pos].delta > 0:
-            # TODO: update existing allocation & deposit accounting.
 
             # Is this the largest deposit adapter out of balance?    
             if not blocked and ((max_delta_deposit_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta > _adapter_states[max_delta_deposit_pos].delta)):
@@ -385,7 +383,6 @@ def _allocate_all_adapters( _ratio_value: uint256, _adapter_states: BalanceAdapt
 
         # Is this a withdraw?
         elif _adapter_states[pos].delta < 0:
-            # TODO: update existing allocation & withdraw accounting.
 
             # Is this the largest withdraw adapter out of balance?
             if not blocked and ((min_delta_withdraw_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta < _adapter_states[min_delta_withdraw_pos].delta)):
@@ -393,7 +390,6 @@ def _allocate_all_adapters( _ratio_value: uint256, _adapter_states: BalanceAdapt
 
         # Otherwise there's no tx for this adapter.
         else:
-            # TODO: update existing allocation accounting for no transfer.
             pass
 
     return _adapter_states, blocked_adapters, max_delta_deposit_pos, min_delta_withdraw_pos, neutral_adapter_pos

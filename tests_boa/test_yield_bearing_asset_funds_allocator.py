@@ -16,27 +16,6 @@ def deployer():
     boa.env.set_balance(acc, 1000*10**18)
     return acc
 
-# @pytest.fixture
-# def trader():
-#     acc = boa.env.generate_address(alias="trader")
-#     boa.env.set_balance(acc, 1000*10**18)
-#     return acc
-
-# @pytest.fixture
-# def dai(deployer, trader):
-#     with boa.env.prank(deployer):
-#         erc = boa.load("contracts/test_helpers/ERC20.vy", "DAI Token", "DAI", 18, 1000*10**18, deployer)
-#         erc.mint(deployer, 100000)
-#         erc.mint(trader, 100000)
-#     return erc    
-
-# @pytest.fixture
-# def erc20(deployer, trader):
-#     with boa.env.prank(deployer):
-#         erc = boa.load("contracts/test_helpers/ERC20.vy", "ERC20", "Coin", 18, 1000*10**18, deployer)
-#         erc.mint(deployer, 100000)
-#         erc.mint(trader, 100000)
-#     return erc     
 
 @pytest.fixture
 def funds_alloc(deployer):
@@ -233,7 +212,7 @@ tx_scenarios = [ # Deposit scenarios
                   'tx_results': [], 'blocked': []}, # 21 - No tx because the min_payout for the deposit is larger than the vault_balance to deposit.
 
                 # Full rebalance
-                {'vault_balance': 0, 'target_vault_balance': 0, 'min_payout': 100, 'adapters': [1,2,3,4],
+                {'vault_balance': 0, 'target_vault_balance': 0, 'min_payout': 300, 'adapters': [1,2,3,4],
                   'tx_results': [(-500,2), (-300,4), (500,1), (300,3)], 'blocked': [], 'full_rebalance': True}, # 22 - Full rebalance, withdraws first.
                 {'vault_balance': 0, 'target_vault_balance': 0, 'min_payout': 300, 'adapters': [1,2,3,4],
                   'tx_results': [(-500,2), (-300,4)], 'blocked': [], 'withdraw_only': True, 'full_rebalance': True}, # 23 - Full rebalance, withdraws only.
