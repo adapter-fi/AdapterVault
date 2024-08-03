@@ -22,7 +22,7 @@ interface AdapterVault:
 
 
 
-implements: IAdapter
+# BDM implements: IAdapter
 
 aoriginalAsset: immutable(address)
 awrappedAsset: immutable(address)
@@ -107,35 +107,18 @@ def totalAssets() -> uint256:
 # Deposit the asset into underlying LP. The tokens must be present inside the 4626 vault.
 @external
 @nonpayable
-def deposit(asset_amount: uint256, pregen_info: Bytes[4096]=empty(Bytes[4096])):
+def deposit(_asset_amount: uint256, _pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])):
     # Move funds into the LP.
-    self.deposit(_asset_amount, msg.sender, 0, pregen_info)
+    AdapterVault(awrappedAsset).deposit(_asset_amount, msg.sender, 0, _pregen_info)
 
 
 # Withdraw the asset from the LP to an arbitary address. 
 @external
 @nonpayable
-def withdraw(_asset_amount: uint256 , _withdraw_to: address, _pregen_info: Bytes[4096]=empty(Bytes[4096])) -> uint256 :
+def withdraw(_asset_amount: uint256 , _withdraw_to: address, 
+             _pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256 :
+    return AdapterVault(awrappedAsset).withdraw(_asset_amount, _withdraw_to, 0, _pregen_info)
 
-    self.withdraw(_asset_amount, _withdraw_to, 0, _pregen_info)
-
-    # TODO : Ignore wrapped asset for now!
-    # Destroy the wrapped assets
-    # shares_owned : uint256 = ERC20(awrappedAsset).balanceOf(self)
-    # shares_to_burn : uint256 = self._convertToShares(asset_amount)
-
-    #if shares_to_burn > shares_owned:
-    #    assert False, "ACK!" # concat("X ",uint2str(shares_owned), "<", uint2str(shares_to_burn))
-
-    #mintableERC20(awrappedAsset).burn(shares_to_burn)
-
-    assert ERC20(aoriginalAsset).balanceOf(adapterLPAddr) >= asset_amount, "INSUFFICIENT FUNDS!"
-    assert ERC20(aoriginalAsset).allowance(adapterLPAddr, self) >= asset_amount, "NO APPROVAL!"
-
-    # Move funds into the destination accout.
-    ERC20(aoriginalAsset).transferFrom(adapterLPAddr, withdraw_to, asset_amount, default_return_value=True)
-    
-    return asset_amount
 
 @external
 def claimRewards(claimant: address):
