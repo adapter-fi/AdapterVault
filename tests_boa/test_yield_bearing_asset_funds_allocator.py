@@ -231,6 +231,14 @@ tx_scenarios = [ # Deposit scenarios
                 # Check for min_payout compliance.
                 {'vault_balance': 10, 'target_vault_balance': 0, 'min_payout': 100, 'adapters': [0,5],
                   'tx_results': [], 'blocked': []}, # 21 - No tx because the min_payout for the deposit is larger than the vault_balance to deposit.
+
+                # Full rebalance
+                {'vault_balance': 0, 'target_vault_balance': 0, 'min_payout': 100, 'adapters': [1,2,3,4],
+                  'tx_results': [(-500,2), (-300,4), (500,1), (300,3)], 'blocked': [], 'full_rebalance': True}, # 22 - Full rebalance, withdraws first.
+                {'vault_balance': 0, 'target_vault_balance': 0, 'min_payout': 100, 'adapters': [1,2,3,4],
+                  'tx_results': [(-500,2), (-300,4)], 'blocked': [], 'withdraw_only': True, 'full_rebalance': True}, # 23 - Full rebalance, withdraws only.
+                {'vault_balance': 0, 'target_vault_balance': 0, 'min_payout': 400, 'adapters': [1,2,3,4],
+                  'tx_results': [(-500,2), (-300,4), (500,1)], 'blocked': [], 'full_rebalance': True}, # 24 - Full rebalance, one doesn't cover minimum payout.                  
             ]
 
 def test_generate_balance_txs(funds_alloc):

@@ -105,10 +105,12 @@ def _is_full_rebalance() -> bool:
 
 @internal
 @pure
-def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_adapters: BalanceAdapter[MAX_ADAPTERS]) \
-                        -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_adapters: BalanceAdapter[MAX_ADAPTERS], 
+                        _min_proposer_payout: uint256, _withdraw_only: bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
     result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
+
+    deposits_last : DynArray[BalanceTX, MAX_ADAPTERS] = empty(DynArray[BalanceTX, MAX_ADAPTERS])
 
     tx_pos : uint256 = 0
     tx_blocked : uint256 = 0
@@ -125,7 +127,18 @@ def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_
         rtx : BalanceAdapter = _adapter_states[i]
         if rtx.adapter == empty(address): break
         assert tx_pos < MAX_ADAPTERS, "Too many transactions #20!"
-        result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
+
+        # Deposits are set aside as withdraws must complete first.
+        if rtx.delta > 0 and rtx.delta >= convert(_min_proposer_payout, int256) and not _withdraw_only:
+            deposits_last.append(BalanceTX({qty: rtx.delta, adapter: rtx.adapter}))
+        elif rtx.delta < 0:
+            result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
+            tx_pos += 1
+
+    # Tack on any deposit txs at the end.
+    for deposit_tx in deposits_last:
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #30!"
+        result_txs[tx_pos] = deposit_tx
         tx_pos += 1
 
     return result_txs, result_blocked                            
@@ -158,7 +171,7 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
 
     # If we're a full rebalance then just return the full tx suite.
     if _full_rebalance:
-        return self._full_rebalance_txs(_adapter_states, blocked_adapters)
+        return self._full_rebalance_txs(_adapter_states, blocked_adapters, _min_proposer_payout, _withdraw_only)
 
     ##
     ## Since not a full rebalance we want to just settle on a single optimal
