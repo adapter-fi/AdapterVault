@@ -109,6 +109,34 @@ def _is_full_rebalance() -> bool:
     return self.fullrebalance[msg.sender]
 
 
+@internal
+@pure
+def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_adapters: BalanceAdapter[MAX_ADAPTERS])
+                        -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+    result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
+    result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
+
+    tx_pos : uint256 = 0
+    tx_blocked : uint256 = 0
+    for i in range(MAX_ADAPTERS):
+        rtx : BalanceAdapter = _blocked_adapters[i]
+        if rtx.adapter == empty(address): break
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #10!"
+        result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
+        result_blocked[tx_blocked] = rtx.adapter
+        tx_pos += 1
+        tx_blocked += 1
+
+    for i in range(MAX_ADAPTERS):
+        rtx : BalanceAdapter = _adapter_states[i]
+        if rtx.adapter == empty(address): break
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #20!"
+        result_txs[tx_pos] = rtx
+        tx_pos += 1
+
+    return result_txs, result_blocked                            
+
+
 # TODO : create a _generate_full_balance_txs function similar to _generate_balance_txs
 
 @internal
@@ -138,6 +166,9 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
     ##  Adapter plan established. Now turn into transactions based on policy requested.
     ##
 
+    # If we're a full rebalance then just return the full tx suite.
+    if _full_rebalance:
+        return _full_rebalance_txs(_adapter_states, blocked_adapters)
 
 
     # Are we dealing with a deposit?
