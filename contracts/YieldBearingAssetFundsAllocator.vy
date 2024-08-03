@@ -111,7 +111,7 @@ def _is_full_rebalance() -> bool:
 
 @internal
 @pure
-def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_adapters: BalanceAdapter[MAX_ADAPTERS])
+def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_adapters: BalanceAdapter[MAX_ADAPTERS]) \
                         -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
     result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
@@ -131,7 +131,7 @@ def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_
         rtx : BalanceAdapter = _adapter_states[i]
         if rtx.adapter == empty(address): break
         assert tx_pos < MAX_ADAPTERS, "Too many transactions #20!"
-        result_txs[tx_pos] = rtx
+        result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
         tx_pos += 1
 
     return result_txs, result_blocked                            
@@ -168,7 +168,7 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
 
     # If we're a full rebalance then just return the full tx suite.
     if _full_rebalance:
-        return _full_rebalance_txs(_adapter_states, blocked_adapters)
+        return self._full_rebalance_txs(_adapter_states, blocked_adapters)
 
 
     # Are we dealing with a deposit?
