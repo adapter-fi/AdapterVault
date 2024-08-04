@@ -50,7 +50,7 @@ def wrappedAsset() -> address: return Share
 @view
 def _convertToShares(_asset_amount: uint256) -> uint256:
     shareQty : uint256 = ERC20(Share).totalSupply()
-    assetQty : uint256 = ERC20(Asset).balanceOf(self)
+    assetQty : uint256 = ERC20(Asset).balanceOf(self.vault_location())
 
     # If there aren't any shares yet it's going to be 1:1.
     if shareQty == 0 or assetQty == 0: return _asset_amount
@@ -68,7 +68,7 @@ def convertToShares(_asset_amount: uint256) -> uint256: return self._convertToSh
 @view
 def _convertToAssets(_share_amount: uint256) -> uint256:
     shareQty : uint256 = ERC20(Share).totalSupply()
-    assetQty : uint256 = ERC20(Asset).balanceOf(self)
+    assetQty : uint256 = ERC20(Asset).balanceOf(self.vault_location())
 
     # If there aren't any shares yet it's going to be 1:1.
     if shareQty == 0 or assetQty == 0: return _share_amount
@@ -86,7 +86,7 @@ def convertToAssets(_share_amount: uint256) -> uint256: return self._convertToAs
 @external
 @view
 def maxWithdraw() -> uint256: 
-    return self._convertToAssets(ERC20(Share).balanceOf(msg.sender))
+    return self._convertToAssets(ERC20(Share).balanceOf(self.vault_location()))
 
 
 NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(uint256) = 2**255 - 43
@@ -102,7 +102,7 @@ def maxDeposit() -> uint256:
 @view
 def totalAssets() -> uint256:
     #return ERC20(Asset).balanceOf(adapterLPAddr)
-    return self._convertToAssets(ERC20(Share).balanceOf(self))
+    return self._convertToAssets(ERC20(Share).balanceOf(self.vault_location()))
 
 
 # Deposit the asset into underlying LP. The tokens must be present inside the 4626 vault.
@@ -134,3 +134,15 @@ def managed_tokens() -> DynArray[address, 10]:
     ret: DynArray[address, 10] = empty(DynArray[address, 10])
     ret.append(Share)
     return ret
+
+
+#Workaround because vyper does not allow doing delegatecall from inside view.
+#we do a static call instead, but need to fix the correct vault location for queries.
+@internal
+@view
+def vault_location() -> address:
+    if self == adapterLPAddr:
+        #if "self" is adapter, meaning this is not delegate call and we treat msg.sender as the vault
+        return msg.sender
+    #Otherwise we are inside DELEGATECALL, therefore self would be the 4626
+    return self
