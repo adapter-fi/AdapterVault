@@ -91,7 +91,10 @@ def vault(deployer, dai, funds_alloc, gov, neutral_adapter):
 
     return v
 
-def test_min_vault_redeem_no_share_slippage(vault, deployer, trader, dai, lp_vault):
+def test_min_vault_redeem_no_share_slippage(vault, deployer, trader, dai, lp_vault, neutral_adapter):
+
+    with boa.env.prank(deployer):
+        assert vault.add_adapter(neutral_adapter) == True
 
     with boa.env.prank(trader):
         # deposit & withdraw excercise ERC20 asset transfers and cause
