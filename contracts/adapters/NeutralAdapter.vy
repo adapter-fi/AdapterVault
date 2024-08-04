@@ -101,15 +101,19 @@ def maxDeposit() -> uint256:
 @external
 @view
 def totalAssets() -> uint256:
-    return ERC20(Asset).balanceOf(adapterLPAddr)
+    #return ERC20(Asset).balanceOf(adapterLPAddr)
+    return self._convertToAssets(ERC20(Share).balanceOf(self))
 
 
 # Deposit the asset into underlying LP. The tokens must be present inside the 4626 vault.
 @external
 @nonpayable
 def deposit(_asset_amount: uint256, _pregen_info: Bytes[4096]=empty(Bytes[4096])):
-    # Move funds into the LP.
-    AdapterVault(Share).deposit(_asset_amount, msg.sender, 0) #, _pregen_info)
+    # Move funds into the LP. These map 1:1 with assets when deposited.
+    ERC20(Asset).approve(Share, _asset_amount)
+    initial : uint256 = ERC20(Share).balanceOf(self)
+    AdapterVault(Share).deposit(_asset_amount, self, 0) #, _pregen_info)
+    assert ERC20(Share).balanceOf(self) == initial + _asset_amount, "DIDN'T WORK!"
 
 
 # Withdraw the asset from the LP to an arbitary address. 
