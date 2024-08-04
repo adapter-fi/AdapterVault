@@ -2,6 +2,7 @@
 #pragma evm-version cancun
 
 from vyper.interfaces import ERC20
+from vyper.interfaces import ERC4626
 # import IAdapter as IAdapter
 from IAdapter import IAdapter as IAdapter
 
@@ -15,11 +16,6 @@ interface mintableERC20:
     def mint(_receiver: address, _amount: uint256) -> uint256: nonpayable
     def burn(_value: uint256): nonpayable
     
-
-interface AdapterVault:
-    def deposit(_asset_amount: uint256, _receiver: address, _min_shares : uint256 = 0, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256: nonpayable
-    def withdraw(_asset_amount: uint256,_receiver: address,_owner: address, _min_assets: uint256 = 0, pregen_info: DynArray[Bytes[4096], MAX_ADAPTERS]=empty(DynArray[Bytes[4096], MAX_ADAPTERS])) -> uint256: nonpayable
-
 
 
 implements: IAdapter
@@ -49,15 +45,7 @@ def wrappedAsset() -> address: return Share
 @internal
 @view
 def _convertToShares(_asset_amount: uint256) -> uint256:
-    shareQty : uint256 = ERC20(Share).totalSupply()
-    assetQty : uint256 = ERC20(Asset).balanceOf(self.vault_location())
-
-    # If there aren't any shares yet it's going to be 1:1.
-    if shareQty == 0 or assetQty == 0: return _asset_amount
-    
-    sharesPerAsset : decimal = (convert(shareQty, decimal) * 10000.0 / convert(assetQty, decimal)) + 1.0
-    return convert(convert(_asset_amount, decimal) * sharesPerAsset / 10000.0, uint256)
-
+    return ERC4626(Share).convertToShares(_asset_amount)
 
 @external
 @view
@@ -67,14 +55,7 @@ def convertToShares(_asset_amount: uint256) -> uint256: return self._convertToSh
 @internal
 @view
 def _convertToAssets(_share_amount: uint256) -> uint256:
-    shareQty : uint256 = ERC20(Share).totalSupply()
-    assetQty : uint256 = ERC20(Asset).balanceOf(self.vault_location())
-
-    # If there aren't any shares yet it's going to be 1:1.
-    if shareQty == 0 or assetQty == 0: return _share_amount
-    
-    assetsPerShare : decimal = convert(assetQty, decimal) / convert(shareQty, decimal)
-    return convert(convert(_share_amount, decimal) * assetsPerShare, uint256)
+    return ERC4626(Share).convertToAssets(_share_amount)
 
 
 @external
@@ -112,7 +93,7 @@ def deposit(_asset_amount: uint256, _pregen_info: Bytes[4096]=empty(Bytes[4096])
     # Move funds into the LP. These map 1:1 with assets when deposited.
     ERC20(Asset).approve(Share, _asset_amount)
     initial : uint256 = ERC20(Share).balanceOf(self)
-    AdapterVault(Share).deposit(_asset_amount, self, 0) #, _pregen_info)
+    ERC4626(Share).deposit(_asset_amount, self)
     assert ERC20(Share).balanceOf(self) == initial + _asset_amount, "DIDN'T WORK!"
 
 
@@ -121,8 +102,7 @@ def deposit(_asset_amount: uint256, _pregen_info: Bytes[4096]=empty(Bytes[4096])
 @nonpayable
 def withdraw(_asset_amount: uint256 , _withdraw_to: address, 
              _pregen_info: Bytes[4096]=empty(Bytes[4096])) -> uint256 :
-    return AdapterVault(Share).withdraw(_asset_amount, _withdraw_to, _withdraw_to, 0) #, _pregen_info)
-
+    return ERC4626(Share).withdraw(_asset_amount, _withdraw_to, _withdraw_to)
 
 @external
 def claimRewards(claimant: address):
