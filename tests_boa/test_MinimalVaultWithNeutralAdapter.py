@@ -122,10 +122,10 @@ def test_min_vault_redeem_no_share_slippage(vault, deployer, trader, dai, lp_vau
         assert new_assets - assets == assets_moved
 
 
-def test_min_vault_mint_no_share_slippage(vault, deployer, trader, dai, lp_vault):
+def test_min_vault_mint_no_share_slippage(vault, deployer, trader, dai, neutral_adapter, lp_vault):
 
     with boa.env.prank(deployer):
-        assert vault.add_adapter(lp_vault) == True
+        assert vault.add_adapter(neutral_adapter) == True
 
     with boa.env.prank(trader):
         # deposit & withdraw excercise ERC20 asset transfers and cause
@@ -140,6 +140,9 @@ def test_min_vault_mint_no_share_slippage(vault, deployer, trader, dai, lp_vault
         print("vault.getCurrentBalances: local = %s, total = %s." % (local,total) )
 
         assets = dai.balanceOf(trader)
+        assert assets >= 1000
+        # What approval needs to happen here?
+        # dai.approve(lp_vault.address, 1000) 
         assets_minted = vault.mint(1000, trader)
         shares = vault.balanceOf(trader)
 

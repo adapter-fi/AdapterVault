@@ -24,33 +24,33 @@ interface AdapterVault:
 
 implements: IAdapter
 
-aoriginalAsset: immutable(address)
-awrappedAsset: immutable(address)
+Asset: immutable(address)
+Share: immutable(address)
 adapterLPAddr: immutable(address)
 
 
 @external
 def __init__(_originalAsset: address, _wrappedAsset: address):
-    aoriginalAsset = _originalAsset
-    awrappedAsset = _wrappedAsset
+    Asset = _originalAsset
+    Share = _wrappedAsset
     adapterLPAddr = self
 
 
 @external
 @pure
-def originalAsset() -> address: return aoriginalAsset
+def originalAsset() -> address: return Asset
 
 
 @external
 @pure
-def wrappedAsset() -> address: return awrappedAsset
+def wrappedAsset() -> address: return Share
 
 
 @internal
 @view
 def _convertToShares(_asset_amount: uint256) -> uint256:
-    shareQty : uint256 = ERC20(awrappedAsset).totalSupply()
-    assetQty : uint256 = ERC20(aoriginalAsset).balanceOf(self)
+    shareQty : uint256 = ERC20(Share).totalSupply()
+    assetQty : uint256 = ERC20(Asset).balanceOf(self)
 
     # If there aren't any shares yet it's going to be 1:1.
     if shareQty == 0 or assetQty == 0: return _asset_amount
@@ -67,8 +67,8 @@ def convertToShares(_asset_amount: uint256) -> uint256: return self._convertToSh
 @internal
 @view
 def _convertToAssets(_share_amount: uint256) -> uint256:
-    shareQty : uint256 = ERC20(awrappedAsset).totalSupply()
-    assetQty : uint256 = ERC20(aoriginalAsset).balanceOf(self)
+    shareQty : uint256 = ERC20(Share).totalSupply()
+    assetQty : uint256 = ERC20(Asset).balanceOf(self)
 
     # If there aren't any shares yet it's going to be 1:1.
     if shareQty == 0 or assetQty == 0: return _share_amount
@@ -86,7 +86,7 @@ def convertToAssets(_share_amount: uint256) -> uint256: return self._convertToAs
 @external
 @view
 def maxWithdraw() -> uint256: 
-    return self._convertToAssets(ERC20(awrappedAsset).balanceOf(msg.sender))
+    return self._convertToAssets(ERC20(Share).balanceOf(msg.sender))
 
 
 NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(uint256) = 2**255 - 43
@@ -101,7 +101,7 @@ def maxDeposit() -> uint256:
 @external
 @view
 def totalAssets() -> uint256:
-    return ERC20(aoriginalAsset).balanceOf(adapterLPAddr)
+    return ERC20(Asset).balanceOf(adapterLPAddr)
 
 
 # Deposit the asset into underlying LP. The tokens must be present inside the 4626 vault.
@@ -109,7 +109,7 @@ def totalAssets() -> uint256:
 @nonpayable
 def deposit(_asset_amount: uint256, _pregen_info: Bytes[4096]=empty(Bytes[4096])):
     # Move funds into the LP.
-    AdapterVault(awrappedAsset).deposit(_asset_amount, msg.sender, 0) #, _pregen_info)
+    AdapterVault(Share).deposit(_asset_amount, msg.sender, 0) #, _pregen_info)
 
 
 # Withdraw the asset from the LP to an arbitary address. 
@@ -117,7 +117,7 @@ def deposit(_asset_amount: uint256, _pregen_info: Bytes[4096]=empty(Bytes[4096])
 @nonpayable
 def withdraw(_asset_amount: uint256 , _withdraw_to: address, 
              _pregen_info: Bytes[4096]=empty(Bytes[4096])) -> uint256 :
-    return AdapterVault(awrappedAsset).withdraw(_asset_amount, _withdraw_to, _withdraw_to, 0) #, _pregen_info)
+    return AdapterVault(Share).withdraw(_asset_amount, _withdraw_to, _withdraw_to, 0) #, _pregen_info)
 
 
 @external
@@ -128,5 +128,5 @@ def claimRewards(claimant: address):
 @view
 def managed_tokens() -> DynArray[address, 10]:
     ret: DynArray[address, 10] = empty(DynArray[address, 10])
-    ret.append(awrappedAsset)
+    ret.append(Share)
     return ret
