@@ -1,5 +1,10 @@
 #pragma version 0.3.10
 #pragma evm-version cancun
+"""
+@title ERC4626 Adapter
+@license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
+@author BiggestLab (https://biggestlab.io) Sajal Kayan
+"""
 
 from vyper.interfaces import ERC20
 from vyper.interfaces import ERC4626

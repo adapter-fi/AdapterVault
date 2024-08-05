@@ -67,9 +67,10 @@ def lp_vault(deployer, dai, funds_alloc, gov):
 def neutral_adapter(deployer, lp_vault, dai):
     with boa.env.prank(deployer):
         v = boa.load(
-            "contracts/adapters/NeutralAdapter.vy",
+            "contracts/adapters/ERC4626Adapter.vy",
             dai,
-            lp_vault)
+            lp_vault,
+            True)
     return v
 
 
