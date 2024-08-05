@@ -17,13 +17,14 @@ implements: IAdapter
 Asset: immutable(address)
 Share: immutable(address)
 adapterLPAddr: immutable(address)
-
+signal_neutral: immutable(bool)
 
 @external
-def __init__(_originalAsset: address, _wrappedAsset: address):
+def __init__(_originalAsset: address, _wrappedAsset: address, _signal_neutral: bool):
     Asset = _originalAsset
     Share = _wrappedAsset
     adapterLPAddr = self
+    signal_neutral = _signal_neutral
 
 
 @external
@@ -61,17 +62,23 @@ def _convertToAssets(_share_amount: uint256) -> uint256:
 @external
 @view
 def maxWithdraw() -> uint256: 
-    return self._convertToAssets(ERC20(Share).balanceOf(self.vault_location()))
+    return ERC4626(Share).maxWithdraw(self.vault_location())
 
-
+#Magic value to signal to funds allocator that the current adapter is the neutral one
 NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(uint256) = 2**255 - 43
 
 #How much asset can be deposited in a single call
 @external
 @view
-def maxDeposit() -> uint256: 
-    return NEUTRAL_ADAPTER_MAX_DEPOSIT
-
+def maxDeposit() -> uint256:
+    if signal_neutral:
+        return NEUTRAL_ADAPTER_MAX_DEPOSIT
+    else:
+        max_deposit: uint256 = ERC4626(Share).maxDeposit(self.vault_location())
+        #Added protection in case underlying vault's result happens to match our magic number
+        if max_deposit == NEUTRAL_ADAPTER_MAX_DEPOSIT:
+            max_deposit -= 1
+        return max_deposit
 
 @external
 @view
