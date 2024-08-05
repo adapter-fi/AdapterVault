@@ -6,12 +6,6 @@ from vyper.interfaces import ERC4626
 # import IAdapter as IAdapter
 from IAdapter import IAdapter as IAdapter
 
-##
-## Must match AdapterVault.vy
-##
-
-MAX_ADAPTERS : constant(uint256) = 5 
-
 interface mintableERC20:
     def mint(_receiver: address, _amount: uint256) -> uint256: nonpayable
     def burn(_value: uint256): nonpayable
@@ -47,9 +41,9 @@ def wrappedAsset() -> address: return Share
 def _convertToShares(_asset_amount: uint256) -> uint256:
     return ERC4626(Share).convertToShares(_asset_amount)
 
-@external
-@view
-def convertToShares(_asset_amount: uint256) -> uint256: return self._convertToShares(_asset_amount)
+# @external
+# @view
+# def convertToShares(_asset_amount: uint256) -> uint256: return self._convertToShares(_asset_amount)
 
 
 @internal
@@ -58,9 +52,9 @@ def _convertToAssets(_share_amount: uint256) -> uint256:
     return ERC4626(Share).convertToAssets(_share_amount)
 
 
-@external
-@view
-def convertToAssets(_share_amount: uint256) -> uint256: return self._convertToAssets(_share_amount)
+# @external
+# @view
+# def convertToAssets(_share_amount: uint256) -> uint256: return self._convertToAssets(_share_amount)
 
 
 #How much asset can be withdrawn in a single call
@@ -94,8 +88,6 @@ def deposit(_asset_amount: uint256, _pregen_info: Bytes[4096]=empty(Bytes[4096])
     ERC20(Asset).approve(Share, _asset_amount)
     initial : uint256 = ERC20(Share).balanceOf(self)
     ERC4626(Share).deposit(_asset_amount, self)
-    assert ERC20(Share).balanceOf(self) == initial + _asset_amount, "DIDN'T WORK!"
-
 
 # Withdraw the asset from the LP to an arbitary address. 
 @external
