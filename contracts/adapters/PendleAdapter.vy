@@ -141,6 +141,16 @@ adapterAddr: immutable(address)
 #Its immutable in pendle so we cache it here for cheaper access
 expiry: immutable(uint256)
 
+
+#Additional helpful getters
+@external
+@pure
+def asset() -> address: return asset
+
+@external
+@pure
+def pendleMarket() -> address: return pendleMarket
+
 @external
 def __init__(
     _asset: address,

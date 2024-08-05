@@ -21,21 +21,20 @@ implements: IAdapter
 
 Asset: immutable(address)
 Share: immutable(address)
-adapterLPAddr: immutable(address)
+adapterAddr: immutable(address)
 signal_neutral: immutable(bool)
 
 @external
 def __init__(_originalAsset: address, _wrappedAsset: address, _signal_neutral: bool):
     Asset = _originalAsset
     Share = _wrappedAsset
-    adapterLPAddr = self
+    adapterAddr = self
     signal_neutral = _signal_neutral
 
 
 @external
 @pure
-def originalAsset() -> address: return Asset
-
+def asset() -> address: return Asset
 
 @external
 @pure
@@ -88,7 +87,7 @@ def maxDeposit() -> uint256:
 @external
 @view
 def totalAssets() -> uint256:
-    #return ERC20(Asset).balanceOf(adapterLPAddr)
+    #return ERC20(Asset).balanceOf(adapterAddr)
     return self._convertToAssets(ERC20(Share).balanceOf(self.vault_location()))
 
 
@@ -125,7 +124,7 @@ def managed_tokens() -> DynArray[address, 10]:
 @internal
 @view
 def vault_location() -> address:
-    if self == adapterLPAddr:
+    if self == adapterAddr:
         #if "self" is adapter, meaning this is not delegate call and we treat msg.sender as the vault
         return msg.sender
     #Otherwise we are inside DELEGATECALL, therefore self would be the 4626
