@@ -146,6 +146,13 @@ def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_
 
 @internal
 @pure
+def _max_available_to_withdraw(_adapter: BalanceAdapter) -> uint256:
+    if convert((_adapter.max_withdraw+1) * -1, uint256) >= convert(max_value(int128), uint256):
+        return _adapter.current
+    return min(convert(_adapter.max_withdraw * -1, uint256), _adapter.current)
+
+@internal
+@pure
 def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
                           _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
                           _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
@@ -242,16 +249,20 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
 
         # Is there still more to go and we have an adapter that most needs to remove funds?
         if shortfall > 0 and min_delta_withdraw_pos != MAX_ADAPTERS:
-            if _adapter_states[min_delta_withdraw_pos].current > shortfall:
+
+            # How much can we pull from the adapter at this moment?
+            adapter_funds_available_now : uint256 = self._max_available_to_withdraw(_adapter_states[min_delta_withdraw_pos])
+
+            if adapter_funds_available_now > shortfall:
                 # Got it all!
                 adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
                                                adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
                 shortfall = 0
             else:
                 # Got some...
-                adapter_txs.append( BalanceTX({qty: convert(_adapter_states[min_delta_withdraw_pos].current, int256) * -1, 
+                adapter_txs.append( BalanceTX({qty: convert(adapter_funds_available_now, int256) * -1, 
                                                adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
-                shortfall -= _adapter_states[min_delta_withdraw_pos].current                
+                shortfall -= adapter_funds_available_now                
 
         # If we still have a shortfall then we have to walk across the remaining adapters (ignoring 
         # min_delta_withdraw_pos & neutral_adapter_pos) until we come up with enough funds to fulfill the withdraw.
@@ -270,16 +281,20 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
                 if _adapter_states[i].adapter in used: continue # Already depleted this adapter.
                 if _adapter_states[i].delta < 0:
                     used.append(_adapter_states[i].adapter) # Mark used
-                    if convert(shortfall, int256) > max(_adapter_states[i].max_withdraw, _adapter_states[i].max_withdraw):
+
+                    # How much can we pull from the adapter at this moment?
+                    adapter_funds_available_now : uint256 = self._max_available_to_withdraw(_adapter_states[i])
+
+                    if shortfall > adapter_funds_available_now:
+                        # Got some...
+                        adapter_txs.append( BalanceTX({qty: convert(adapter_funds_available_now, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall -= adapter_funds_available_now
+                    else:
                         # Got it all!
                         adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
                                             adapter: _adapter_states[i].adapter}) )
                         shortfall = 0
-                    else:
-                        # Got some...
-                        adapter_txs.append( BalanceTX({qty: convert(_adapter_states[i].current, int256) * -1, 
-                                            adapter: _adapter_states[i].adapter}) )
-                        shortfall -= _adapter_states[i].current 
 
             # Take funds from remaining adapters having any remaining balance.
             for i in range(MAX_ADAPTERS):
@@ -287,16 +302,20 @@ def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint25
                 if _adapter_states[i].adapter in used: continue # Already depleted this adapter.
                 if _adapter_states[i].current > 0:
                     used.append(_adapter_states[i].adapter) # Mark used
-                    if convert(shortfall, int256) > max(_adapter_states[i].max_withdraw, _adapter_states[i].max_withdraw):
+
+                    # How much can we pull from the adapter at this moment?
+                    adapter_funds_available_now : uint256 = self._max_available_to_withdraw(_adapter_states[i])
+
+                    if shortfall > adapter_funds_available_now:
+                        # Got some...
+                        adapter_txs.append( BalanceTX({qty: convert(adapter_funds_available_now, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall -= adapter_funds_available_now
+                    else:
                         # Got it all!
                         adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
                                             adapter: _adapter_states[i].adapter}) )
-                        shortfall = 0
-                    else:
-                        # Got some...
-                        adapter_txs.append( BalanceTX({qty: convert(_adapter_states[i].current, int256) * -1, 
-                                            adapter: _adapter_states[i].adapter}) )
-                        shortfall -= _adapter_states[i].current             
+                        shortfall = 0             
 
             assert shortfall == 0, "ERROR - inadequate funds to fulfill withdraw!"
     else:
