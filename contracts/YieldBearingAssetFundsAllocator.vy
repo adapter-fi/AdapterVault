@@ -109,7 +109,7 @@ def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_
                         _min_proposer_payout: uint256, _withdraw_only: bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
     result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
     result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
-
+    
     deposits_last : DynArray[BalanceTX, MAX_ADAPTERS] = empty(DynArray[BalanceTX, MAX_ADAPTERS])
 
     tx_pos : uint256 = 0
@@ -126,6 +126,7 @@ def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_
     for i in range(MAX_ADAPTERS):
         rtx : BalanceAdapter = _adapter_states[i]
         if rtx.adapter == empty(address): break
+        if rtx.adapter in result_blocked: continue  
         assert tx_pos < MAX_ADAPTERS, "Too many transactions #20!"
 
         # Deposits are set aside as withdraws must complete first.
