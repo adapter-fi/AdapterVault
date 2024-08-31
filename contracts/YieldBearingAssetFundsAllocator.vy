@@ -405,7 +405,11 @@ def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : Bala
 
     # Have funds been lost?
     should_we_block_adapter : bool = False
-    if _balance_adapter.current < _balance_adapter.last_value:
+
+    maximum_loss_before_breaking : uint256 = convert(ADAPTER_BREAKS_LOSS_POINT * convert(_balance_adapter.last_value, decimal), uint256)
+    minimum_allowed_remaining_balance : uint256 = _balance_adapter.last_value - maximum_loss_before_breaking
+
+    if _balance_adapter.current < minimum_allowed_remaining_balance:
         # There's an unexpected loss of value. Let's try to empty this adapter and stop
         # further allocations to it by setting the ratio to 0 going forward.
         # This will not necessarily result in any "leftovers" unless withdrawing the full
