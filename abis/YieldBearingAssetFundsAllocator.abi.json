@@ -1,0 +1,382 @@
+[
+  {
+    "inputs": [
+      {
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "name": "set_fullrebalance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_vault_balance",
+        "type": "uint256"
+      },
+      {
+        "name": "_target_asset_balance",
+        "type": "uint256"
+      },
+      {
+        "name": "_min_proposer_payout",
+        "type": "uint256"
+      },
+      {
+        "name": "_total_assets",
+        "type": "uint256"
+      },
+      {
+        "name": "_total_ratios",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "adapter",
+            "type": "address"
+          },
+          {
+            "name": "current",
+            "type": "uint256"
+          },
+          {
+            "name": "last_value",
+            "type": "uint256"
+          },
+          {
+            "name": "max_deposit",
+            "type": "int256"
+          },
+          {
+            "name": "max_withdraw",
+            "type": "int256"
+          },
+          {
+            "name": "ratio",
+            "type": "uint256"
+          },
+          {
+            "name": "target",
+            "type": "uint256"
+          },
+          {
+            "name": "delta",
+            "type": "int256"
+          }
+        ],
+        "name": "_adapter_states",
+        "type": "tuple[5]"
+      }
+    ],
+    "name": "getBalanceTxs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "qty",
+            "type": "int256"
+          },
+          {
+            "name": "adapter",
+            "type": "address"
+          }
+        ],
+        "name": "",
+        "type": "tuple[5]"
+      },
+      {
+        "name": "",
+        "type": "address[5]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_vault_balance",
+        "type": "uint256"
+      },
+      {
+        "name": "_target_asset_balance",
+        "type": "uint256"
+      },
+      {
+        "name": "_min_proposer_payout",
+        "type": "uint256"
+      },
+      {
+        "name": "_total_assets",
+        "type": "uint256"
+      },
+      {
+        "name": "_total_ratios",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "adapter",
+            "type": "address"
+          },
+          {
+            "name": "current",
+            "type": "uint256"
+          },
+          {
+            "name": "last_value",
+            "type": "uint256"
+          },
+          {
+            "name": "max_deposit",
+            "type": "int256"
+          },
+          {
+            "name": "max_withdraw",
+            "type": "int256"
+          },
+          {
+            "name": "ratio",
+            "type": "uint256"
+          },
+          {
+            "name": "target",
+            "type": "uint256"
+          },
+          {
+            "name": "delta",
+            "type": "int256"
+          }
+        ],
+        "name": "_adapter_states",
+        "type": "tuple[5]"
+      },
+      {
+        "name": "_withdraw_only",
+        "type": "bool"
+      }
+    ],
+    "name": "getBalanceTxs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "qty",
+            "type": "int256"
+          },
+          {
+            "name": "adapter",
+            "type": "address"
+          }
+        ],
+        "name": "",
+        "type": "tuple[5]"
+      },
+      {
+        "name": "",
+        "type": "address[5]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_vault_balance",
+        "type": "uint256"
+      },
+      {
+        "name": "_target_asset_balance",
+        "type": "uint256"
+      },
+      {
+        "name": "_min_proposer_payout",
+        "type": "uint256"
+      },
+      {
+        "name": "_total_assets",
+        "type": "uint256"
+      },
+      {
+        "name": "_total_ratios",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "adapter",
+            "type": "address"
+          },
+          {
+            "name": "current",
+            "type": "uint256"
+          },
+          {
+            "name": "last_value",
+            "type": "uint256"
+          },
+          {
+            "name": "max_deposit",
+            "type": "int256"
+          },
+          {
+            "name": "max_withdraw",
+            "type": "int256"
+          },
+          {
+            "name": "ratio",
+            "type": "uint256"
+          },
+          {
+            "name": "target",
+            "type": "uint256"
+          },
+          {
+            "name": "delta",
+            "type": "int256"
+          }
+        ],
+        "name": "_adapter_states",
+        "type": "tuple[5]"
+      },
+      {
+        "name": "_withdraw_only",
+        "type": "bool"
+      },
+      {
+        "name": "_full_rebalance",
+        "type": "bool"
+      }
+    ],
+    "name": "generate_balance_txs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "qty",
+            "type": "int256"
+          },
+          {
+            "name": "adapter",
+            "type": "address"
+          }
+        ],
+        "name": "",
+        "type": "tuple[5]"
+      },
+      {
+        "name": "",
+        "type": "address[5]"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_ratio_value",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "adapter",
+            "type": "address"
+          },
+          {
+            "name": "current",
+            "type": "uint256"
+          },
+          {
+            "name": "last_value",
+            "type": "uint256"
+          },
+          {
+            "name": "max_deposit",
+            "type": "int256"
+          },
+          {
+            "name": "max_withdraw",
+            "type": "int256"
+          },
+          {
+            "name": "ratio",
+            "type": "uint256"
+          },
+          {
+            "name": "target",
+            "type": "uint256"
+          },
+          {
+            "name": "delta",
+            "type": "int256"
+          }
+        ],
+        "name": "_balance_adapter",
+        "type": "tuple"
+      }
+    ],
+    "name": "allocate_balance_adapter_tx",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "adapter",
+            "type": "address"
+          },
+          {
+            "name": "current",
+            "type": "uint256"
+          },
+          {
+            "name": "last_value",
+            "type": "uint256"
+          },
+          {
+            "name": "max_deposit",
+            "type": "int256"
+          },
+          {
+            "name": "max_withdraw",
+            "type": "int256"
+          },
+          {
+            "name": "ratio",
+            "type": "uint256"
+          },
+          {
+            "name": "target",
+            "type": "uint256"
+          },
+          {
+            "name": "delta",
+            "type": "int256"
+          }
+        ],
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "name": "",
+        "type": "int256"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  }
+]

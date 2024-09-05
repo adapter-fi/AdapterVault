@@ -1,0 +1,470 @@
+#pragma version 0.3.10
+#pragma evm-version cancun
+
+"""
+@title Adapter Fund Allocation Logic
+@license Copyright 2023, 2024 Biggest Lab Co Ltd, Benjamin Scherrey, Sajal Kayan, and Eike Caldeweyher
+@author BiggestLab (https://biggestlab.io) Benjamin Scherrey
+
+Slippage is an insidious little parasite because attempts to optimize funds into the best mix of
+returns generally results in higher transaction quantities which gives more opportunity for the
+parasites to bite us! This makes optimizations generally counter productive when applied across
+multiple adapters inside a single transaction. This funds allocator model is designed to treat the
+strategy model as more of a direction than a destination and gradually approach an optimum strategy
+goals over multiple user transactions rather than each time.
+
+Now, for any deposit, we will only interact with a single adapter - that being the one that is most
+out of balance compared to the ideal distribution of funds according to the current active strategy
+ratios. However, since deposits are possibly restricted due to Adapter.maxDeposit() limits, there
+could be situations where the full amount of the deposit is not able to be deposited into the
+targeted adapter. Should that happen, the default condition is the remaining funds will sit in the
+4626 Vault buffer and be unallocated. This is not desirable because the next depositor will not
+only be moving their funds into an adapter but also the left over funds as well which potentially
+exposes the tx to additional slippage increasing the risk of their tx reverting due to slippage 
+violations.
+
+To counteract the above exception condition we are introducing a "neutral adapter". This is an
+adapter that simply holds the assets and does nothing to swap them into any other asset. It just
+holds them as a buffer and takes the place of the main 4626 vault buffer. This adapter can be
+identified as the special "neutral adapter" because a call to it's Adapter.maxDesposit() function
+will always return convert(max_value(int256) - 42), uint256) as a special indicator that this
+adapter is not going to have any slippage or fees so is safe to hold "leftovers". All future
+withdraws will always try to pull from the "neutral adapter" first. And even if the "neutral
+adapter" has a 0 strategy ratio, leftovers will still get deposited there. If a "neutral adapter"
+has not been deployed then the default original behavior of using the 4626 vault buffer will resume.
+
+Finally - to support the 4626 vault's full balanceAdapters capabilities, we will check for a
+fullrebalance indication that will let us know the contract owner has directly invoked this thus 
+producing multiple txs to get the Vault fully aligned to the current strategy.
+"""
+
+##
+## Must match AdapterVault.vy
+##
+
+MAX_ADAPTERS : constant(uint256) = 5 
+
+ADAPTER_BREAKS_LOSS_POINT : constant(decimal) = 0.05
+
+# This structure must match definition in AdapterVault.vy
+struct BalanceTX:
+    qty: int256
+    adapter: address
+
+# This structure must match definition in AdapterVault.vy
+struct BalanceAdapter:
+    adapter: address
+    current: uint256
+    last_value: uint256
+    max_deposit: int256
+    max_withdraw: int256 # represented as a negative number
+    ratio: uint256
+    target: uint256 
+    delta: int256
+
+##
+##  Used to indicate by the vault owner that calls to getBalanceTXs during this transaction should attempt a full
+##  rebalance of the Vault's adapters. Transient is used to ensure this state doesn't persist outside of a single
+##  transaction.
+##
+fullrebalance: transient(HashMap[address, bool])    
+
+interface Vault:
+    def owner() -> address: nonpayable
+
+@external
+def set_fullrebalance(vault: address):
+    assert Vault(vault).owner() == msg.sender
+    self.fullrebalance[vault] = True
+
+
+@external
+@view
+def getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
+                  _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
+                  _withdraw_only : bool = False) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):  
+    full_rebalance : bool = self._is_full_rebalance()
+    return self._getBalanceTxs(_vault_balance, _target_asset_balance, _min_proposer_payout, _total_assets, _total_ratios, _adapter_states, _withdraw_only, full_rebalance)
+
+
+@internal
+@pure
+def _getBalanceTxs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
+                   _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
+                   _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):    
+    return self._generate_balance_txs(_vault_balance, _target_asset_balance, _min_proposer_payout, 
+                                      _total_assets, _total_ratios, _adapter_states, 
+                                      _withdraw_only, _full_rebalance)
+
+
+@internal
+@view
+def _is_full_rebalance() -> bool:
+    return self.fullrebalance[msg.sender]
+
+
+@internal
+@pure
+def _full_rebalance_txs(_adapter_states: BalanceAdapter[MAX_ADAPTERS], _blocked_adapters: BalanceAdapter[MAX_ADAPTERS], 
+                        _min_proposer_payout: uint256, _withdraw_only: bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]): 
+    result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
+    result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
+    
+    deposits_last : DynArray[BalanceTX, MAX_ADAPTERS] = empty(DynArray[BalanceTX, MAX_ADAPTERS])
+
+    tx_pos : uint256 = 0
+    tx_blocked : uint256 = 0
+    for i in range(MAX_ADAPTERS):
+        rtx : BalanceAdapter = _blocked_adapters[i]
+        if rtx.adapter == empty(address): break
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #10!"
+        result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
+        result_blocked[tx_blocked] = rtx.adapter
+        tx_pos += 1
+        tx_blocked += 1
+
+    for i in range(MAX_ADAPTERS):
+        rtx : BalanceAdapter = _adapter_states[i]
+        if rtx.adapter == empty(address): break
+        if rtx.adapter in result_blocked: continue  
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #20!"
+
+        # Deposits are set aside as withdraws must complete first.
+        if rtx.delta > 0 and rtx.delta >= convert(_min_proposer_payout, int256) and not _withdraw_only:
+            deposits_last.append(BalanceTX({qty: rtx.delta, adapter: rtx.adapter}))
+        elif rtx.delta < 0:
+            result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
+            tx_pos += 1
+
+    # Tack on any deposit txs at the end.
+    for deposit_tx in deposits_last:
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #30!"
+        result_txs[tx_pos] = deposit_tx
+        tx_pos += 1
+
+    return result_txs, result_blocked                            
+
+
+@internal
+@pure
+def _max_available_to_withdraw(_adapter: BalanceAdapter) -> uint256:
+    if convert((_adapter.max_withdraw+1) * -1, uint256) >= convert(max_value(int128), uint256):
+        return _adapter.current
+    return min(convert(_adapter.max_withdraw * -1, uint256), _adapter.current)
+
+@internal
+@pure
+def _generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
+                          _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
+                          _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
+
+    adapter_txs : DynArray[BalanceTX,MAX_ADAPTERS] = empty(DynArray[BalanceTX,MAX_ADAPTERS])
+    blocked_adapters : BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
+
+    # Offsets in _adapter_states for key adapters
+    max_delta_deposit_pos : uint256 = MAX_ADAPTERS
+    min_delta_withdraw_pos : uint256 = MAX_ADAPTERS
+    neutral_adapter_pos : uint256 = MAX_ADAPTERS
+
+    remaining_funds_to_allocate : uint256 = _total_assets - _target_asset_balance
+    if _total_ratios == 0: _total_ratios = 1 # Prevent a potential divide by zero exception.
+    ratio_value : uint256 = remaining_funds_to_allocate / _total_ratios
+
+    _adapter_states, blocked_adapters, max_delta_deposit_pos, \
+    min_delta_withdraw_pos, neutral_adapter_pos = self._allocate_all_adapters( ratio_value, _adapter_states ) 
+
+    ##
+    ##  Adapter plan established. Now turn into transactions based on policy requested.
+    ##
+
+    # If we're a full rebalance then just return the full tx suite.
+    if _full_rebalance:
+        return self._full_rebalance_txs(_adapter_states, blocked_adapters, _min_proposer_payout, _withdraw_only)
+
+    ##
+    ## Since not a full rebalance we want to just settle on a single optimal
+    ## transaction if possible (plus any necessary blocked adapter exists).
+    ##
+
+    # Are we dealing with a deposit?
+    if _target_asset_balance == 0 and _vault_balance > _min_proposer_payout:
+
+        # Do we have a best case adapter to receive the funds?
+        if max_delta_deposit_pos != MAX_ADAPTERS:  
+
+            # Do we need to redirect an overage?
+            if _adapter_states[max_delta_deposit_pos].max_deposit < convert(_vault_balance, int256):
+                _adapter_states[max_delta_deposit_pos].delta = _adapter_states[max_delta_deposit_pos].max_deposit
+                adapter_txs.append( BalanceTX({qty: _adapter_states[max_delta_deposit_pos].max_deposit, 
+                                               adapter: _adapter_states[max_delta_deposit_pos].adapter}) )                 
+
+                # # Do we have a neutral adapter to take the rest?
+                if neutral_adapter_pos != MAX_ADAPTERS:
+                    adapter_txs.append( BalanceTX({qty: convert(_vault_balance, int256) - _adapter_states[max_delta_deposit_pos].max_deposit, 
+                                                   adapter: _adapter_states[neutral_adapter_pos].adapter}) )
+
+            # Great - it can take the whole thing.
+            else:
+                adapter_txs.append( BalanceTX({qty: convert(_vault_balance, int256), 
+                                               adapter: _adapter_states[max_delta_deposit_pos].adapter}) ) 
+
+        # No normal adapters available to take our deposit.
+        else:
+            # Do we have a neutral adapter to take the rest?
+            if neutral_adapter_pos != MAX_ADAPTERS:
+                assert convert(_vault_balance, int256) <= _adapter_states[neutral_adapter_pos].max_deposit, "Over deposit on neutral vault!"
+                adapter_txs.append( BalanceTX({qty: convert(_vault_balance, int256), 
+                                               adapter: _adapter_states[neutral_adapter_pos].adapter}) )
+            # Nothing to do but let it sit in the vault buffer.
+            else:
+                pass
+
+
+    # Is it a withdraw and is our buffer short of funds?
+    elif _target_asset_balance > 0 and _vault_balance < _target_asset_balance:
+
+        shortfall : uint256 = _target_asset_balance - _vault_balance
+
+        # If there's some blocked adapters that we're recovering funds from, let's count them against
+        # the shortfall now.
+
+        for i in range(MAX_ADAPTERS):
+            if convert(shortfall, int256) + blocked_adapters[i].delta <= 0:
+                shortfall = 0
+                break
+            else:
+                shortfall = convert(convert(shortfall,int256)+blocked_adapters[i].delta, uint256)
+
+        # Always try to extract funds from the neutral adapter if possible.
+        if neutral_adapter_pos != MAX_ADAPTERS and _adapter_states[neutral_adapter_pos].current > 0:
+            if _adapter_states[neutral_adapter_pos].current > shortfall:
+                # Got it all!
+                adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
+                                               adapter: _adapter_states[neutral_adapter_pos].adapter}) )
+                shortfall = 0
+            else:
+                # Got some...
+                adapter_txs.append( BalanceTX({qty: convert(_adapter_states[neutral_adapter_pos].current, int256) * -1, 
+                                               adapter: _adapter_states[neutral_adapter_pos].adapter}) )
+                shortfall -= _adapter_states[neutral_adapter_pos].current                
+
+        # Is there still more to go and we have an adapter that most needs to remove funds?
+        if shortfall > 0 and min_delta_withdraw_pos != MAX_ADAPTERS:
+
+            # How much can we pull from the adapter at this moment?
+            adapter_funds_available_now : uint256 = self._max_available_to_withdraw(_adapter_states[min_delta_withdraw_pos])
+
+            if adapter_funds_available_now > shortfall:
+                # Got it all!
+                adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
+                                               adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
+                shortfall = 0
+            else:
+                # Got some...
+                adapter_txs.append( BalanceTX({qty: convert(adapter_funds_available_now, int256) * -1, 
+                                               adapter: _adapter_states[min_delta_withdraw_pos].adapter}) )
+                shortfall -= adapter_funds_available_now                
+
+        # If we still have a shortfall then we have to walk across the remaining adapters (ignoring 
+        # min_delta_withdraw_pos & neutral_adapter_pos) until we come up with enough funds to fulfill the withdraw.
+        if shortfall > 0:
+            # Walk over remaining adapters with balances prioritizing adapters looking to withdraw first.
+            used : DynArray[address,MAX_ADAPTERS] = empty(DynArray[address,MAX_ADAPTERS]) # Addresses of adapters we've already depleted.
+            if min_delta_withdraw_pos != MAX_ADAPTERS: used.append(_adapter_states[min_delta_withdraw_pos].adapter) # Already depleted this one.
+            if neutral_adapter_pos != MAX_ADAPTERS: used.append(_adapter_states[neutral_adapter_pos].adapter) # Already depleted this one.
+            for i in range(MAX_ADAPTERS):
+                if blocked_adapters[i].adapter != empty(address):
+                    used.append(blocked_adapters[i].adapter) # We're already emptying the blocked adapters.
+
+            # Take funds from remaining adapters looking to withdraw to balance first.
+            for i in range(MAX_ADAPTERS):
+                if shortfall == 0: break
+                if _adapter_states[i].adapter in used: continue # Already depleted this adapter.
+                if _adapter_states[i].delta < 0:
+                    used.append(_adapter_states[i].adapter) # Mark used
+
+                    # How much can we pull from the adapter at this moment?
+                    adapter_funds_available_now : uint256 = self._max_available_to_withdraw(_adapter_states[i])
+
+                    if shortfall > adapter_funds_available_now:
+                        # Got some...
+                        adapter_txs.append( BalanceTX({qty: convert(adapter_funds_available_now, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall -= adapter_funds_available_now
+                    else:
+                        # Got it all!
+                        adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall = 0
+
+            # Take funds from remaining adapters having any remaining balance.
+            for i in range(MAX_ADAPTERS):
+                if shortfall == 0: break
+                if _adapter_states[i].adapter in used: continue # Already depleted this adapter.
+                if _adapter_states[i].current > 0:
+                    used.append(_adapter_states[i].adapter) # Mark used
+
+                    # How much can we pull from the adapter at this moment?
+                    adapter_funds_available_now : uint256 = self._max_available_to_withdraw(_adapter_states[i])
+
+                    if shortfall > adapter_funds_available_now:
+                        # Got some...
+                        adapter_txs.append( BalanceTX({qty: convert(adapter_funds_available_now, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall -= adapter_funds_available_now
+                    else:
+                        # Got it all!
+                        adapter_txs.append( BalanceTX({qty: convert(shortfall, int256) * -1, 
+                                            adapter: _adapter_states[i].adapter}) )
+                        shortfall = 0             
+
+            assert shortfall == 0, "ERROR - inadequate funds to fulfill withdraw!"
+    else:
+        # Nothing we need to do. Either withdraw is satisfied by the vault buffer or the deposit is
+        # too small for the minimum tx size.
+        pass
+
+    result_txs : BalanceTX[MAX_ADAPTERS] = empty(BalanceTX[MAX_ADAPTERS])
+    result_blocked : address[MAX_ADAPTERS] = empty(address[MAX_ADAPTERS])
+
+    tx_pos : uint256 = 0
+    tx_blocked : uint256 = 0
+    for i in range(MAX_ADAPTERS):
+        rtx : BalanceAdapter = blocked_adapters[i]
+        if rtx.adapter == empty(address): break
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #1!"
+        result_txs[tx_pos] = BalanceTX({qty: rtx.delta, adapter: rtx.adapter})
+        result_blocked[tx_blocked] = rtx.adapter
+        tx_pos += 1
+        tx_blocked += 1
+
+    for rtx in adapter_txs:
+        assert tx_pos < MAX_ADAPTERS, "Too many transactions #2!"
+        result_txs[tx_pos] = rtx
+        tx_pos += 1
+
+    return result_txs, result_blocked
+
+
+@external
+@pure
+def generate_balance_txs(_vault_balance: uint256, _target_asset_balance: uint256, _min_proposer_payout: uint256, 
+                         _total_assets: uint256, _total_ratios: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS], 
+                         _withdraw_only : bool, _full_rebalance : bool) -> (BalanceTX[MAX_ADAPTERS], address[MAX_ADAPTERS]):     
+    """
+    """
+    return self._generate_balance_txs(_vault_balance, _target_asset_balance, _min_proposer_payout, 
+                                      _total_assets, _total_ratios, _adapter_states, 
+                                      _withdraw_only, _full_rebalance)
+ 
+
+@internal
+@pure
+def _allocate_all_adapters( _ratio_value: uint256, _adapter_states: BalanceAdapter[MAX_ADAPTERS] ) \
+                            -> (BalanceAdapter[MAX_ADAPTERS], BalanceAdapter[MAX_ADAPTERS], uint256, uint256, uint256):
+    #                           _adapter_states, blocked_adapters, max_delta_deposit_pos, max_delta_withdraw_pos, neutral_adapter_pos
+    blocked_adapters : BalanceAdapter[MAX_ADAPTERS] = empty(BalanceAdapter[MAX_ADAPTERS])
+    blocked_pos : uint256 = 0
+
+    # Offsets in _adapter_states for key adapters
+    max_delta_deposit_pos : uint256 = MAX_ADAPTERS
+    min_delta_withdraw_pos : uint256 = MAX_ADAPTERS
+    neutral_adapter_pos : uint256 = MAX_ADAPTERS
+
+    ##
+    ##  Setup adapter dispositions for a full rebalance plan.
+    ##
+
+    for pos in range(MAX_ADAPTERS):
+        if _adapter_states[pos].adapter == empty(address):
+            break
+        leftovers : int256 = 0
+        blocked : bool = False        
+        neutral : bool = False
+
+        _adapter_states[pos], leftovers, blocked, neutral = self._allocate_balance_adapter_tx(_ratio_value, _adapter_states[pos])
+
+        # Is this a blocked adapter now?
+        if blocked:
+            assert _adapter_states[pos].delta <= 0, "Blocked adapter flaw trying to deposit!" # This can't happen.
+            blocked_adapters[blocked_pos] = _adapter_states[pos]
+            blocked_pos += 1
+
+        # Is this a key adapter? If so it's not eligible to be max deposit or min withdraw adapter unless no other qualifies.
+        if neutral:
+            neutral_adapter_pos = pos
+        
+        # Is this a deposit?
+        elif _adapter_states[pos].delta > 0:
+
+            # Is this the largest deposit adapter out of balance?    
+            if not blocked and ((max_delta_deposit_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta > _adapter_states[max_delta_deposit_pos].delta)):
+                max_delta_deposit_pos = pos
+
+        # Is this a withdraw?
+        elif _adapter_states[pos].delta < 0:
+
+            # Is this the largest withdraw adapter out of balance?
+            if not blocked and ((min_delta_withdraw_pos == MAX_ADAPTERS) or (_adapter_states[pos].delta < _adapter_states[min_delta_withdraw_pos].delta)):
+                min_delta_withdraw_pos = pos
+
+        # Otherwise there's no tx for this adapter.
+        else:
+            pass
+
+    return _adapter_states, blocked_adapters, max_delta_deposit_pos, min_delta_withdraw_pos, neutral_adapter_pos
+
+#_HACK : constant(int128) = max_value(int256) - 42
+NEUTRAL_ADAPTER_MAX_DEPOSIT : constant(uint256) = 2**255 - 43
+
+
+@internal
+@pure
+def _allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
+    is_neutral_adapter : bool = _balance_adapter.max_deposit == convert(NEUTRAL_ADAPTER_MAX_DEPOSIT, int256)
+
+    # Have funds been lost?
+    should_we_block_adapter : bool = False
+
+    maximum_loss_before_breaking : uint256 = convert(ADAPTER_BREAKS_LOSS_POINT * convert(_balance_adapter.last_value, decimal), uint256)
+    minimum_allowed_remaining_balance : uint256 = _balance_adapter.last_value - maximum_loss_before_breaking
+
+    if _balance_adapter.current < minimum_allowed_remaining_balance:
+        # There's an unexpected loss of value. Let's try to empty this adapter and stop
+        # further allocations to it by setting the ratio to 0 going forward.
+        # This will not necessarily result in any "leftovers" unless withdrawing the full
+        # balance of the adapter is limited by max_withdraw limits below.
+        _balance_adapter.ratio = 0
+        should_we_block_adapter = True
+
+    target : uint256 = _ratio_value * _balance_adapter.ratio
+    delta : int256 = convert(target, int256) - convert(_balance_adapter.current, int256) 
+
+    leftovers : int256 = 0
+
+    # Limit deposits to max_deposit
+    if delta > _balance_adapter.max_deposit:
+        leftovers = delta - _balance_adapter.max_deposit
+        delta = _balance_adapter.max_deposit
+
+    # Limit withdraws to max_withdraw    
+    elif delta < _balance_adapter.max_withdraw:
+        leftovers = delta - _balance_adapter.max_withdraw
+        delta = _balance_adapter.max_withdraw
+
+    _balance_adapter.delta = delta
+    _balance_adapter.target = target  # We are not adjusting the optimium target for now.
+
+    return _balance_adapter, leftovers, should_we_block_adapter, is_neutral_adapter
+
+
+@external
+@pure
+def allocate_balance_adapter_tx(_ratio_value : uint256, _balance_adapter : BalanceAdapter) -> (BalanceAdapter, int256, bool, bool):
+    """
+    Given a value per strategy ratio and an un-allocated BalanceAdapter, return the newly allocated BalanceAdapter
+    constrained by min & max limits and also identify if this adapter should be blocked due to unexpected losses,
+    plus identify whether or not this is our "neutral adapter".
+    """    
+    return self._allocate_balance_adapter_tx(_ratio_value, _balance_adapter)
+

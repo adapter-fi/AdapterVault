@@ -49,4 +49,6 @@ abi-export:
 	jq .abi .build/Governance.json  > ./abis/Governance.abi.json
 	jq .abi .build/PendleVaultFactory.json  > ./abis/PendleVaultFactory.abi.json
 	jq .abi .build/PTMigrationRouter.json  > ./abis/PTMigrationRouter.abi.json
+	jq .abi .build/ERC4626Adapter.json  > ./abis/ERC4626Adapter.abi.json
+	jq .abi .build/YieldBearingAssetFundsAllocator.json  > ./abis/YieldBearingAssetFundsAllocator.abi.json
 
